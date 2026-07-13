@@ -23,6 +23,8 @@ Window {
     LayerShell.Window.scope: "osusayohub-overlay"
 
     readonly property bool pastel: hub.scene === "pastel"
+    readonly property bool night: hub.scene === "night"
+    readonly property bool freedom: hub.scene === "freedom"
     readonly property string ink: hub.ink
     readonly property string inkDim: hub.inkDim
     readonly property string paper: hub.paper
@@ -116,7 +118,7 @@ Window {
             // hatched planets + crescent moon, drawn once (night scene only)
             Canvas {
                 anchors.fill: parent
-                visible: !root.pastel
+                visible: root.night
                 Component.onCompleted: requestPaint()
                 onPaint: {
                     var ctx = getContext("2d")
@@ -198,7 +200,7 @@ Window {
                 anchors.bottom: parent.bottom
                 width: parent.width
                 height: 26
-                visible: !root.pastel
+                visible: root.night
                 opacity: 0.45
                 property real phase: 0
                 NumberAnimation on phase { from: 0; to: 1; duration: 2200; loops: Animation.Infinite }
@@ -373,6 +375,215 @@ Window {
                     opacity: 0.55
                     Rectangle { x: modelData.dx > 0 ? 0 : -9; y: 0; width: 9; height: 1; color: root.ink }
                     Rectangle { x: 0; y: modelData.dy > 0 ? 0 : -9; width: 1; height: 9; color: root.ink }
+                }
+            }
+
+            // -- FREEDOM DIVE REIMAGINED cosmic scenery -------------------
+
+            Canvas {
+                id: freedomScene
+                anchors.fill: parent
+                visible: root.freedom
+                onVisibleChanged: if (visible) requestPaint()
+                Component.onCompleted: requestPaint()
+                property real t: 0
+                NumberAnimation on t { from: 0; to: Math.PI * 2; duration: 4000; loops: Animation.Infinite; running: freedomScene.visible }
+                onTChanged: requestPaint()
+                Connections { target: hub; function onThemeChanged() { freedomScene.requestPaint() } }
+
+                // stable random seeds
+                property var confetti: []
+                property var sparkles: []
+                property bool seeded: false
+                function ensureSeeds() {
+                    if (seeded) return
+                    seeded = true
+                    // pseudo-random from a fixed seed
+                    function sr(s) { s = (s * 9301 + 49297) % 233280; return s / 233280.0 }
+                    var s = 1222
+                    confetti = []
+                    for (var i = 0; i < 14; i++) {
+                        s = (s * 9301 + 49297) % 233280; var fx = s / 233280.0
+                        s = (s * 9301 + 49297) % 233280; var fy = s / 233280.0
+                        s = (s * 9301 + 49297) % 233280; var sz = 1.5 + (s / 233280.0) * 2.0
+                        s = (s * 9301 + 49297) % 233280; var ph = (s / 233280.0) * 6.28
+                        s = (s * 9301 + 49297) % 233280; var sp = 0.6 + (s / 233280.0) * 1.2
+                        s = (s * 9301 + 49297) % 233280; var rt = (s / 233280.0) * 360
+                        confetti.push({fx: fx, fy: fy, sz: sz, ph: ph, sp: sp, rt: rt})
+                    }
+                    sparkles = []
+                    for (var j = 0; j < 6; j++) {
+                        s = (s * 9301 + 49297) % 233280; var sfx = s / 233280.0
+                        s = (s * 9301 + 49297) % 233280; var sfy = s / 233280.0
+                        s = (s * 9301 + 49297) % 233280; var ssz = 2.0 + (s / 233280.0) * 2.5
+                        s = (s * 9301 + 49297) % 233280; var sph = (s / 233280.0) * 6.28
+                        s = (s * 9301 + 49297) % 233280; var ssp = 0.5 + (s / 233280.0) * 1.1
+                        sparkles.push({fx: sfx, fy: sfy, sz: ssz, ph: sph, sp: ssp})
+                    }
+                }
+
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    ensureSeeds()
+
+                    // shooting star arrows from corners
+                    function shootingArrow(x0, y0, x1, y1, thickness, seed) {
+                        var pulse = 0.15 + 0.12 * Math.sin(t * 1.3 + seed * 2.5)
+                        var grad = ctx.createLinearGradient(x0, y0, x1, y1)
+                        grad.addColorStop(0.0, "rgba(255,80,60," + pulse + ")")
+                        grad.addColorStop(0.25, "rgba(255,200,50," + pulse + ")")
+                        grad.addColorStop(0.5, "rgba(100,230,100," + pulse + ")")
+                        grad.addColorStop(0.75, "rgba(80,180,255," + pulse + ")")
+                        grad.addColorStop(1.0, "rgba(180,100,255," + pulse + ")")
+                        ctx.strokeStyle = grad
+                        ctx.lineWidth = thickness
+                        ctx.lineCap = "round"
+                        ctx.beginPath()
+                        ctx.moveTo(x0, y0)
+                        ctx.lineTo(x1, y1)
+                        ctx.stroke()
+                    }
+                    shootingArrow(-8, height + 4, width * 0.45, height * 0.35, 14, 0)
+                    shootingArrow(width + 8, -4, width * 0.55, height * 0.7, 10, 1)
+
+                    // white diamond confetti
+                    for (var ci = 0; ci < confetti.length; ci++) {
+                        var c = confetti[ci]
+                        var tw = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * c.sp + c.ph))
+                        var cx2 = c.fx * width, cy2 = c.fy * height
+                        ctx.save()
+                        ctx.translate(cx2, cy2)
+                        ctx.rotate((c.rt + t * c.sp * 15) * Math.PI / 180)
+                        ctx.fillStyle = "rgba(255,255,255," + (0.63 * tw) + ")"
+                        var ss = c.sz * 0.7
+                        ctx.fillRect(-ss / 2, -ss / 2, ss, ss)
+                        ctx.restore()
+                    }
+
+                    // golden sparkle stars
+                    for (var si = 0; si < sparkles.length; si++) {
+                        var sk = sparkles[si]
+                        var stw = 0.2 + 0.8 * (0.5 + 0.5 * Math.sin(t * sk.sp + sk.ph))
+                        var sx = sk.fx * width, sy = sk.fy * height
+                        var gs = sk.sz * (0.8 + 1.2 * stw)
+                        ctx.strokeStyle = "rgba(255,220,80," + (0.86 * stw) + ")"
+                        ctx.lineWidth = 1.5
+                        ctx.beginPath(); ctx.moveTo(sx - gs, sy); ctx.lineTo(sx + gs, sy); ctx.stroke()
+                        ctx.beginPath(); ctx.moveTo(sx, sy - gs); ctx.lineTo(sx, sy + gs); ctx.stroke()
+                        var ds = gs * 0.5
+                        ctx.strokeStyle = "rgba(255,220,80," + (0.5 * stw) + ")"
+                        ctx.lineWidth = 1.0
+                        ctx.beginPath(); ctx.moveTo(sx - ds, sy - ds); ctx.lineTo(sx + ds, sy + ds); ctx.stroke()
+                        ctx.beginPath(); ctx.moveTo(sx - ds, sy + ds); ctx.lineTo(sx + ds, sy - ds); ctx.stroke()
+                    }
+
+                    // three blob planets
+                    function blobPlanet(cx, cy, r, seed) {
+                        ctx.save()
+                        ctx.translate(cx, cy)
+                        var pulse = Math.sin(t * 1.5 + seed) * 0.06
+                        var wobble = Math.sin(t * 0.8 + seed * 1.7) * 0.07
+                        ctx.rotate(wobble)
+                        ctx.scale(1 + pulse, 1 - pulse)
+
+                        // rainbow ring gradient
+                        var grad = ctx.createLinearGradient(-r * 2.2, 0, r * 2.2, 0)
+                        grad.addColorStop(0.0, "rgb(255,100,60)")
+                        grad.addColorStop(0.2, "rgb(255,200,50)")
+                        grad.addColorStop(0.4, "rgb(100,230,100)")
+                        grad.addColorStop(0.6, "rgb(80,220,255)")
+                        grad.addColorStop(0.8, "rgb(100,120,255)")
+                        grad.addColorStop(1.0, "rgb(200,100,255)")
+
+                        var ringAng = (15 + t * 25 * (seed % 2 === 0 ? 1 : -1)) * Math.PI / 180
+
+                        // ring back half
+                        ctx.save()
+                        ctx.rotate(ringAng)
+                        ctx.scale(1, 0.26)
+                        ctx.strokeStyle = grad
+                        ctx.lineWidth = r * 0.3
+                        ctx.beginPath()
+                        ctx.arc(0, 0, r * 1.9, Math.PI, 2 * Math.PI)
+                        ctx.stroke()
+                        ctx.restore()
+
+                        // warm cream body with blush
+                        var bodyGrad = ctx.createLinearGradient(-r, -r, r, r)
+                        bodyGrad.addColorStop(0.0, "rgba(255,250,240,0.96)")
+                        bodyGrad.addColorStop(0.5, "rgba(255,245,235,0.98)")
+                        bodyGrad.addColorStop(1.0, "rgba(255,230,220,0.92)")
+                        ctx.fillStyle = bodyGrad
+                        ctx.beginPath()
+                        ctx.arc(0, 0, r, 0, 2 * Math.PI)
+                        ctx.fill()
+                        ctx.strokeStyle = "rgba(200,190,180,0.3)"
+                        ctx.lineWidth = 1
+                        ctx.stroke()
+
+                        // face
+                        ctx.strokeStyle = "rgb(40,40,60)"
+                        ctx.lineWidth = Math.max(1.2, r * 0.1)
+                        ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
+
+                        if (seed === 0) {
+                            // >w< squinty face
+                            ctx.beginPath()
+                            ctx.moveTo(-r * 0.45, -r * 0.25); ctx.lineTo(-r * 0.2, -r * 0.05); ctx.lineTo(-r * 0.45, r * 0.15)
+                            ctx.stroke()
+                            ctx.beginPath()
+                            ctx.moveTo(r * 0.45, -r * 0.25); ctx.lineTo(r * 0.2, -r * 0.05); ctx.lineTo(r * 0.45, r * 0.15)
+                            ctx.stroke()
+                            // w mouth
+                            ctx.beginPath()
+                            ctx.moveTo(-r * 0.2, r * 0.2)
+                            ctx.quadraticCurveTo(-r * 0.1, r * 0.35, 0, r * 0.22)
+                            ctx.quadraticCurveTo(r * 0.1, r * 0.35, r * 0.2, r * 0.2)
+                            ctx.stroke()
+                            // pink tongue
+                            ctx.fillStyle = "rgb(240,130,140)"
+                            ctx.beginPath()
+                            ctx.arc(0, r * 0.3, r * 0.07, 0, 2 * Math.PI)
+                            ctx.fill()
+                        } else if (seed === 1) {
+                            // ˆ_ˆ happy closed eyes
+                            ctx.beginPath()
+                            ctx.arc(-r * 0.28, -r * 0.12, r * 0.17, Math.PI, 2 * Math.PI)
+                            ctx.stroke()
+                            ctx.beginPath()
+                            ctx.arc(r * 0.28, -r * 0.12, r * 0.17, Math.PI, 2 * Math.PI)
+                            ctx.stroke()
+                            // smile
+                            ctx.beginPath()
+                            ctx.arc(0, r * 0.15, r * 0.15, 0, Math.PI)
+                            ctx.stroke()
+                        } else {
+                            // dot eyes, o mouth (surprised peeking)
+                            ctx.fillStyle = "rgb(40,40,60)"
+                            ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.1, r * 0.08, 0, 2 * Math.PI); ctx.fill()
+                            ctx.beginPath(); ctx.arc(r * 0.25, -r * 0.1, r * 0.08, 0, 2 * Math.PI); ctx.fill()
+                            ctx.beginPath(); ctx.arc(0, r * 0.2, r * 0.1, 0, 2 * Math.PI); ctx.stroke()
+                        }
+
+                        // ring front half
+                        ctx.save()
+                        ctx.rotate(ringAng)
+                        ctx.scale(1, 0.26)
+                        ctx.strokeStyle = grad
+                        ctx.lineWidth = r * 0.3
+                        ctx.beginPath()
+                        ctx.arc(0, 0, r * 1.9, 0, Math.PI)
+                        ctx.stroke()
+                        ctx.restore()
+
+                        ctx.restore()
+                    }
+
+                    blobPlanet(width - 38, 30, 18, 0)
+                    blobPlanet(width * 0.32, 16, 8, 1)
+                    blobPlanet(6, height * 0.6, 6, 2)
                 }
             }
 

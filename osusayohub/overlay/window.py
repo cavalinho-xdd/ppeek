@@ -89,6 +89,20 @@ class OverlayWindow(QWidget):
             for kind in kinds
         ]
 
+        # freedom scene: diamond confetti (x_frac, y_frac, size, phase, speed, rotation)
+        frng = random.Random(1222)
+        self._freedom_confetti: list[tuple[float, float, float, float, float, float]] = [
+            (frng.random(), frng.random(), frng.uniform(1.5, 3.5),
+             frng.uniform(0.0, math.tau), frng.uniform(0.6, 1.8), frng.uniform(0, 360))
+            for _ in range(14)
+        ]
+        # freedom golden sparkle stars (x_frac, y_frac, size, phase, speed)
+        self._freedom_sparkles: list[tuple[float, float, float, float, float]] = [
+            (frng.random(), frng.random(), frng.uniform(2.0, 4.5),
+             frng.uniform(0.0, math.tau), frng.uniform(0.5, 1.6))
+            for _ in range(6)
+        ]
+
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -155,6 +169,34 @@ class OverlayWindow(QWidget):
     def on_kps(self, kps: float) -> None:
         self._kps = kps
 
+    def apply_layout(self, anchor_name: str, margin_x: int, margin_y: int, auto_hide: bool) -> None:
+        self._auto_hide = auto_hide
+        screen = self.screen()
+        if not screen:
+            from PyQt6.QtGui import QGuiApplication
+            screen = QGuiApplication.primaryScreen()
+        if not screen:
+            return
+            
+        geom = screen.availableGeometry()
+        w, h = self.width(), self.height()
+        
+        if "left" in anchor_name:
+            x = geom.left() + margin_x
+        elif "right" in anchor_name:
+            x = geom.right() - w - margin_x
+        else:
+            x = geom.center().x() - w // 2
+            
+        if "top" in anchor_name:
+            y = geom.top() + margin_y
+        elif "bottom" in anchor_name:
+            y = geom.bottom() - h - margin_y
+        else:
+            y = geom.center().y() - h // 2
+            
+        self.move(int(x), int(y))
+
     # -- animation -----------------------------------------------------
 
     def _animate(self) -> None:
@@ -186,6 +228,8 @@ class OverlayWindow(QWidget):
         # scene behind the numbers
         if self._theme.scene == "pastel":
             self._paint_pastel_scene(p, w, h, t)
+        elif self._theme.scene == "freedom":
+            self._paint_freedom_scene(p, w, h, t)
         else:
             self._paint_stars(p, w, h, t)
             self._paint_planet(p, w - 52, 36, 20, alpha=150, ring=True)
@@ -280,6 +324,159 @@ class OverlayWindow(QWidget):
         c = QColor(self._theme.accent)
         c.setAlpha(max(0, min(255, alpha)))
         return c
+
+    def _paint_freedom_scene(self, p: QPainter, w: int, h: int, t: float) -> None:
+        """Cosmic scene from FREEDOM DiVE REiMAGINED by @tofumang_:
+        cute blob planets with rainbow rings, shooting star arrows,
+        white diamond confetti, and golden sparkle stars."""
+        self._paint_stars(p, w, h, t)
+
+        # shooting star arrows radiating from the corners (like the skin art)
+        self._paint_shooting_arrows(p, w, h, t)
+
+        # white diamond confetti scattered across the sky
+        for fx, fy, size, phase, speed, rot in self._freedom_confetti:
+            tw = 0.3 + 0.7 * (0.5 + 0.5 * math.sin(t * speed + phase))
+            x, y = fx * w, fy * h
+            p.save()
+            p.translate(x, y)
+            p.rotate(rot + t * speed * 15)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, int(160 * tw)))
+            s = size * 0.7
+            p.drawRect(QRectF(-s / 2, -s / 2, s, s))
+            p.restore()
+
+        # golden four-point sparkle stars (like the cursor glow)
+        for fx, fy, size, phase, speed in self._freedom_sparkles:
+            tw = 0.2 + 0.8 * (0.5 + 0.5 * math.sin(t * speed + phase))
+            x, y = fx * w, fy * h
+            gold = QColor(255, 220, 80, int(220 * tw))
+            s = size * (0.8 + 1.2 * tw)
+            p.setPen(QPen(gold, 1.5))
+            p.drawLine(QPointF(x - s, y), QPointF(x + s, y))
+            p.drawLine(QPointF(x, y - s), QPointF(x, y + s))
+            # diagonal arms at half intensity for six-point effect
+            ds = s * 0.5
+            gold.setAlpha(int(130 * tw))
+            p.setPen(QPen(gold, 1.0))
+            p.drawLine(QPointF(x - ds, y - ds), QPointF(x + ds, y + ds))
+            p.drawLine(QPointF(x - ds, y + ds), QPointF(x + ds, y - ds))
+
+        # three blob planets (big squinty >w<, medium gentle ˆ_ˆ, tiny peeking from edge)
+        self._paint_blob_planet(p, w - 38, 30, 18, t, 0)   # big one, top-right
+        self._paint_blob_planet(p, w * 0.32, 16, 8, t, 1)  # medium, top-left
+        self._paint_blob_planet(p, 6, h * 0.6, 6, t, 2)    # tiny, peeking from left
+
+    def _paint_shooting_arrows(self, p: QPainter, w: int, h: int, t: float) -> None:
+        """Thick rainbow arrow bands shooting across the panel, like the skin art."""
+        # two arrows: one from bottom-left going up-right, one from top-right going left
+        arrows = [
+            (QPointF(-8, h + 4), QPointF(w * 0.45, h * 0.35), 14, 0),
+            (QPointF(w + 8, -4), QPointF(w * 0.55, h * 0.7), 10, 1),
+        ]
+        for start, end, thickness, seed in arrows:
+            # pulsing opacity
+            pulse = 0.15 + 0.12 * math.sin(t * 1.3 + seed * 2.5)
+            grad = QLinearGradient(start, end)
+            grad.setColorAt(0.0, QColor(255, 80, 60, int(255 * pulse)))    # red
+            grad.setColorAt(0.25, QColor(255, 200, 50, int(255 * pulse)))  # yellow
+            grad.setColorAt(0.5, QColor(100, 230, 100, int(255 * pulse)))  # green
+            grad.setColorAt(0.75, QColor(80, 180, 255, int(255 * pulse)))  # blue
+            grad.setColorAt(1.0, QColor(180, 100, 255, int(255 * pulse)))  # purple
+            p.setPen(QPen(grad, thickness, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(start, end)
+
+    def _paint_blob_planet(self, p: QPainter, cx: float, cy: float, r: float, t: float, seed: int) -> None:
+        """Cute white blob planet with rainbow ring and face, matching skin art."""
+        p.save()
+        p.translate(cx, cy)
+        pulse = math.sin(t * 1.5 + seed) * 0.06
+        wobble = math.sin(t * 0.8 + seed * 1.7) * 4
+        p.rotate(wobble)
+        p.scale(1 + pulse, 1 - pulse)
+
+        # rainbow ring gradient matching the skin (red→yellow→green→cyan→blue→purple)
+        grad = QLinearGradient(QPointF(-r * 2.2, 0), QPointF(r * 2.2, 0))
+        grad.setColorAt(0.0, QColor(255, 100, 60))
+        grad.setColorAt(0.2, QColor(255, 200, 50))
+        grad.setColorAt(0.4, QColor(100, 230, 100))
+        grad.setColorAt(0.6, QColor(80, 220, 255))
+        grad.setColorAt(0.8, QColor(100, 120, 255))
+        grad.setColorAt(1.0, QColor(200, 100, 255))
+
+        ring_angle = 15 + t * 25 * (1 if seed % 2 == 0 else -1)
+        ring_rect = QRectF(-r * 1.9, -r * 0.5, r * 3.8, r * 1.0)
+
+        # ring back half (behind the body)
+        p.save()
+        p.rotate(ring_angle)
+        p.setPen(QPen(grad, r * 0.3))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawArc(ring_rect, 0, 180 * 16)
+        p.restore()
+
+        # warm cream body with subtle blush (like the actual skin art)
+        body = QPainterPath()
+        body.addEllipse(QPointF(0, 0), r, r)
+        body_grad = QLinearGradient(QPointF(-r, -r), QPointF(r, r))
+        body_grad.setColorAt(0.0, QColor(255, 250, 240, 245))   # warm cream top
+        body_grad.setColorAt(0.5, QColor(255, 245, 235, 250))   # cream middle
+        body_grad.setColorAt(1.0, QColor(255, 230, 220, 235))   # warm peach bottom (blush)
+        p.fillPath(body, body_grad)
+        p.setPen(QPen(QColor(200, 190, 180, 80), 1.0))
+        p.drawPath(body)
+
+        # face — different expressions per planet (matching the skin art faces)
+        face_color = QColor(40, 40, 60)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        lw = max(1.2, r * 0.1)
+        p.setPen(QPen(face_color, lw, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+
+        if seed == 0:
+            # big planet: squinty happy >w< face (like the main blob in the art)
+            # left eye: >
+            p.drawLine(QPointF(-r * 0.45, -r * 0.25), QPointF(-r * 0.2, -r * 0.05))
+            p.drawLine(QPointF(-r * 0.45, r * 0.15), QPointF(-r * 0.2, -r * 0.05))
+            # right eye: <
+            p.drawLine(QPointF(r * 0.45, -r * 0.25), QPointF(r * 0.2, -r * 0.05))
+            p.drawLine(QPointF(r * 0.45, r * 0.15), QPointF(r * 0.2, -r * 0.05))
+            # w mouth (cat smile)
+            mouth = QPainterPath(QPointF(-r * 0.2, r * 0.2))
+            mouth.quadTo(QPointF(-r * 0.1, r * 0.35), QPointF(0, r * 0.22))
+            mouth.quadTo(QPointF(r * 0.1, r * 0.35), QPointF(r * 0.2, r * 0.2))
+            p.drawPath(mouth)
+            # pink tongue peeking out
+            tongue = QPainterPath()
+            tongue.addEllipse(QPointF(0, r * 0.3), r * 0.07, r * 0.06)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(240, 130, 140))
+            p.fillPath(tongue, QColor(240, 130, 140))
+        elif seed == 1:
+            # medium planet: gentle ˆ_ˆ (happy closed eyes, like the bottom-right blob)
+            p.drawArc(QRectF(-r * 0.45, -r * 0.25, r * 0.35, r * 0.25), 0, 180 * 16)
+            p.drawArc(QRectF(r * 0.1, -r * 0.25, r * 0.35, r * 0.25), 0, 180 * 16)
+            # gentle curve mouth
+            p.drawArc(QRectF(-r * 0.15, r * 0.05, r * 0.3, r * 0.2), 180 * 16, 180 * 16)
+        else:
+            # tiny planet: dot eyes, small o mouth (surprised/peeking)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(face_color)
+            p.drawEllipse(QPointF(-r * 0.25, -r * 0.1), r * 0.08, r * 0.08)
+            p.drawEllipse(QPointF(r * 0.25, -r * 0.1), r * 0.08, r * 0.08)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(face_color, lw))
+            p.drawEllipse(QPointF(0, r * 0.2), r * 0.1, r * 0.08)
+
+        # ring front half (in front of the body)
+        p.save()
+        p.rotate(ring_angle)
+        p.setPen(QPen(grad, r * 0.3))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawArc(ring_rect, 180 * 16, 180 * 16)
+        p.restore()
+
+        p.restore()
 
     def _paint_pastel_scene(self, p: QPainter, w: int, h: int, t: float) -> None:
         """Blue Archive motifs, after the Arona & Plana skin art: diagonal

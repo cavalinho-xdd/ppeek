@@ -75,8 +75,22 @@ ARONA_PLANA = OverlayTheme(
 
 DEFAULT_THEME = FULL_MOON_NIGHT
 
+FREEDOM_DIVE = OverlayTheme(
+    name="freedom-dive",
+    scene="freedom",
+    ink=QColor(255, 255, 255),
+    body_fill=QColor(12, 18, 48, 235),
+    miss=QColor(255, 120, 140),        # pink-red like the skin's ✕ miss marker
+    bg_top=QColor(25, 40, 85, 215),    # cosmic blue from the menu-background
+    bg_bottom=QColor(8, 12, 35, 240),  # deep space void
+    accent=QColor(150, 230, 255),      # Combo1 light cyan
+    deco_red=QColor(255, 125, 177),    # Combo2 pink
+    font="Gaegu",
+)
+
 # first substring hit wins; needles are matched casefolded
 SKIN_THEMES: list[tuple[str, OverlayTheme]] = [
+    ("freedom dive", FREEDOM_DIVE),
     ("fool moon night", FULL_MOON_NIGHT),
     ("hk7205", ARONA_PLANA),
     ("アロナ", ARONA_PLANA),
