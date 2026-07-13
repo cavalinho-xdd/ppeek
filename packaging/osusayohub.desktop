@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=OsuSayoHub
+Comment=osu!lazer overlay and SayoDevice O3C configuration hub
+Exec=osusayohub
+Icon=osusayohub
+Terminal=false
+Categories=Game;Utility;
+Keywords=osu;overlay;keypad;sayodevice;

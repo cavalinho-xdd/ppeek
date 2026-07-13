@@ -1,0 +1,13 @@
+# python
+__pycache__/
+*.egg-info/
+
+# makepkg / build artifacts
+build/
+pkg/
+src/
+*.pkg.tar.zst
+
+# local tooling state
+.tokensave/
+.claude/

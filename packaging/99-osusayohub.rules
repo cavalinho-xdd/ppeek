@@ -1,0 +1,5 @@
+# SayoDevice O3C: allow desktop user to read/write hidraw config channel
+# and read raw input events without root.
+# NOTE: update idVendor/idProduct once confirmed via `lsusb` (placeholders below).
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="8089", ATTRS{idProduct}=="0009", TAG+="uaccess"
+KERNEL=="event*", SUBSYSTEM=="input", ATTRS{idVendor}=="8089", ATTRS{idProduct}=="0009", TAG+="uaccess"
