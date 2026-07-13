@@ -51,21 +51,21 @@ def run_overlay() -> None:
 
     hub = HubState()
 
+    window = None
+
     def read_layout() -> None:
         settings.sync()
-        logger.info("layout: anchor=%s mx=%s my=%s",
-                    settings.value("overlay/anchor"), settings.value("overlay/margin_x"),
-                    settings.value("overlay/margin_y"))
-        hub.apply_layout(
-            anchor_name=str(settings.value("overlay/anchor", "bottom-right")),
-            margin_x=int(settings.value("overlay/margin_x", 24)),
-            margin_y=int(settings.value("overlay/margin_y", 24)),
-            auto_hide=settings.value("overlay/auto_hide", True, type=bool),
-        )
+        anchor = str(settings.value("overlay/anchor", "bottom-right"))
+        mx = int(settings.value("overlay/margin_x", 24))
+        my = int(settings.value("overlay/margin_y", 24))
+        ah = settings.value("overlay/auto_hide", True, type=bool)
+        
+        logger.info("layout: anchor=%s mx=%s my=%s", anchor, mx, my)
+        hub.apply_layout(anchor_name=anchor, margin_x=mx, margin_y=my, auto_hide=ah)
+        if window is not None:
+            window.apply_layout(anchor_name=anchor, margin_x=mx, margin_y=my, auto_hide=ah)
 
     read_layout()
-
-    window = None
     if use_layer_shell:
         from PyQt6.QtQml import QQmlApplicationEngine
 
@@ -80,6 +80,7 @@ def run_overlay() -> None:
         from osusayohub.overlay.window import OverlayWindow
 
         window = OverlayWindow(auto_hide=settings.value("overlay/auto_hide", True, type=bool))
+        read_layout()
         window.show()
 
     # -- data feeds ------------------------------------------------------

@@ -17,14 +17,14 @@ FONTS_DIR = Path(__file__).parent.parent / "assets" / "fonts"
 
 
 def ensure_theme_fonts() -> None:
-    """Register bundled Readex Pro with Qt when the system lacks it."""
+    """Register all bundled fonts with Qt."""
     from PyQt6.QtGui import QFontDatabase
 
-    if "Readex Pro" in QFontDatabase.families():
+    if not FONTS_DIR.exists():
         return
-    for fname in ("ReadexPro-Regular.ttf", "ReadexPro-bold.ttf"):
-        path = FONTS_DIR / fname
-        if path.exists():
+    
+    for path in FONTS_DIR.iterdir():
+        if path.suffix.lower() in (".ttf", ".otf"):
             QFontDatabase.addApplicationFont(str(path))
 
 
@@ -85,7 +85,7 @@ FREEDOM_DIVE = OverlayTheme(
     bg_bottom=QColor(8, 12, 35, 240),  # deep space void
     accent=QColor(150, 230, 255),      # Combo1 light cyan
     deco_red=QColor(255, 125, 177),    # Combo2 pink
-    font="Gaegu",
+    font="Mochiy Pop One",
 )
 
 # first substring hit wins; needles are matched casefolded
