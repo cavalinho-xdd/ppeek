@@ -45,7 +45,7 @@ def run_overlay() -> None:
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    settings = QSettings("osusayohub", "osusayohub")
+    settings = QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "osusayohub", "osusayohub")
 
     from osusayohub.overlay.bridge import HubState
 
