@@ -11,3 +11,6 @@ src/
 # local tooling state
 .tokensave/
 .claude/
+
+# local project notes
+CLAUDE.md
