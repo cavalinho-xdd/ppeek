@@ -33,8 +33,12 @@ def run_overlay() -> None:
     from PyQt6.QtCore import QFileSystemWatcher, QSettings, QTimer
     from PyQt6.QtWidgets import QApplication
 
-    from osusayohub.input.tracker import ClickTracker, calculate_unstable_rate
-    from osusayohub.osu.telemetry import TelemetryListener
+    from osusayohub.input.tracker import (
+        ClickTracker,
+        calculate_unstable_rate,
+        evdev_available,
+    )
+    from osusayohub.osu.telemetry import PreciseListener, TelemetryListener
 
     app = QApplication(sys.argv)
     app.setApplicationName("osusayohub-overlay")
@@ -89,7 +93,39 @@ def run_overlay() -> None:
         )
         return tracker
 
+    # keyOverlay KPS: sliding window of (time, cumulative press count) samples;
+    # used when no evdev tracker runs (Windows) — evdev is more precise
+    from collections import deque
+    from time import monotonic
+
+    key_samples: deque[tuple[float, int]] = deque()
+
+    def keyoverlay_kps(window_s: float = 1.0) -> float:
+        now = monotonic()
+        while key_samples and now - key_samples[0][0] > window_s + 0.5:
+            key_samples.popleft()
+        if len(key_samples) < 2:
+            return 0.0
+        newest_t, newest_total = key_samples[-1]
+        if now - newest_t > window_s:
+            return 0.0  # telemetry stalled — don't freeze a stale value
+        for t, total in key_samples:
+            if newest_t - t <= window_s:
+                return max(0, newest_total - total) / window_s
+        return 0.0
+
+    def record_key_total(total: int) -> None:
+        if total <= 0:
+            return
+        # a new play resets tosu's counters; drop the old ramp
+        if key_samples and total < key_samples[-1][1]:
+            key_samples.clear()
+        key_samples.append((monotonic(), total))
+
     def on_frame(frame) -> None:
+        # gosumemory-style payloads carry keyOverlay inline; tosu v2 sends
+        # it on the /precise endpoint instead (PreciseListener below)
+        record_key_total(frame.key_total)
         hub.on_telemetry_frame(frame)
         if window is not None:
             window.on_telemetry_frame(frame)
@@ -100,8 +136,14 @@ def run_overlay() -> None:
             window.on_telemetry_disconnect()
 
     telemetry = TelemetryListener(on_frame=on_frame, on_disconnect=on_disconnect)
+    # no evdev (Windows): pull press counters from tosu's precise endpoint
+    precise = None
+    if not evdev_available():
+        precise = PreciseListener(on_key_total=record_key_total)
 
     def restart_tracker() -> None:
+        if not evdev_available():
+            return  # Windows/macOS: KPS comes from tosu keyOverlay instead
         if tracker_holder["tracker"]:
             tracker_holder["tracker"].stop()
         tracker = make_tracker(str(settings.value("input/device_path", "")))
@@ -126,16 +168,21 @@ def run_overlay() -> None:
 
     watcher.fileChanged.connect(on_settings_changed)
 
+    def push_kps() -> None:
+        tracker = tracker_holder["tracker"]
+        kps = tracker.keys_per_second() if tracker else keyoverlay_kps()
+        hub.on_kps(kps)
+        if window is not None:
+            window.on_kps(kps)
+
     kps_timer = QTimer()
     kps_timer.setInterval(250)
-    kps_timer.timeout.connect(
-        lambda: hub.on_kps(
-            tracker_holder["tracker"].keys_per_second() if tracker_holder["tracker"] else 0.0
-        )
-    )
+    kps_timer.timeout.connect(push_kps)
     kps_timer.start()
 
     with loop:
         restart_tracker()
         telemetry.start()
+        if precise is not None:
+            precise.start()
         loop.run_forever()

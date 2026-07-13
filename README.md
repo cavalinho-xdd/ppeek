@@ -1,6 +1,6 @@
 # osu!SayoHub
 
-**All-in-one desktop companion for [osu!lazer](https://osu.ppy.sh) — live PP overlay with a hit-error meter, plus a config hub for the SayoDevice O3C keypad.**
+**Live PP overlay for [osu!lazer](https://osu.ppy.sh) — hit-error meter, UR, combo, accuracy and KPS, with skin-driven themes. Windows & Linux.**
 
 <p align="center">
   <img src="docs/overlay-arona-plana.png" alt="Arona & Plana pastel theme" width="380">
@@ -13,19 +13,17 @@
   Arona &amp; Plana (Blue Archive) pastel on the left, FOOL MOON NIGHT hand-drawn ink on the right.</em>
 </p>
 
-> **Platform:** Linux only for now (built for Wayland/Hyprland, X11 works too).
-> A **Windows port is planned** — stay tuned.
-
 ---
 
 ## ✨ Features
 
-### 🎯 Live gameplay overlay
 - **Live PP**, combo, accuracy, grade and hit counts — streamed from [tosu](https://tosu.app) over its local WebSocket, no osu! plugins needed
 - **Hit-error meter** with fading tick marks and 300/100/50 windows, plus **UR (unstable rate)** readout
-- **KPS counter** with an evdev-based fallback UR when telemetry doesn't provide one
-- **Click-through & focus-free** — the overlay never steals input from the game (wlr-layer-shell on Wayland)
-- Auto-hides outside gameplay
+- **KPS counter** — evdev on Linux, tosu keyOverlay counters on Windows
+- **Click-through & focus-free** — the overlay never steals input from the game
+- **Auto-hide**: appears when a beatmap starts, disappears after it ends
+- **Tray status icon**: gray = waiting for osu!, amber = attaching tosu, green = running
+- **tosu is managed for you** — the app starts and restarts tosu automatically, no manual setup
 
 ### 🎨 Skin-driven themes
 The overlay reads the **active skin name from osu!lazer** (via tosu) and switches its entire look on the fly:
@@ -38,17 +36,14 @@ The overlay reads the **active skin name from osu!lazer** (via tosu) and switche
 
 Everything is painted procedurally — no image assets, just code. Adding a theme for your skin is a single palette entry in [`osusayohub/overlay/theme.py`](osusayohub/overlay/theme.py).
 
-### ⌨️ SayoDevice O3C config hub
-- Key bindings, RGB lighting and device settings over raw HID — no SayoDevice web configurator needed
-- Protocol implemented from scratch and verified on hardware (64-byte reports, checksummed)
-- Writes go to device RAM with an explicit *save to flash* step
-
 ## 🚀 Getting started
 
-### Requirements
-- Linux (Wayland with `layer-shell-qt` for the true overlay experience; X11 falls back to a frameless always-on-top window)
-- [osu!lazer](https://osu.ppy.sh/home/download) + [tosu](https://tosu.app) running (`localhost:24050`)
-- Python ≥ 3.11, PyQt6
+### Windows 10 / 11
+
+1. Download `OsuSayoHub-windows.zip` from the [latest release](../../releases/latest)
+2. Unzip anywhere and run `OsuSayoHub.exe` (tosu is bundled and started automatically)
+3. Start osu!lazer in **borderless / windowed fullscreen** — no overlay software can draw over exclusive fullscreen
+4. The tray icon turns green when everything is attached; the overlay appears when you start a beatmap
 
 ### Arch Linux
 ```sh
@@ -56,6 +51,8 @@ git clone https://github.com/cavalinho-xdd/osusayohub.git
 cd osusayohub
 makepkg -si
 ```
+
+On Wayland with `layer-shell-qt` the overlay renders on the wlr-layer-shell overlay layer (visible above fullscreen games); X11 falls back to a frameless always-on-top window.
 
 ### Anywhere else
 ```sh
@@ -68,23 +65,21 @@ osusayohub
 ```
 osu!lazer ──▶ tosu ──▶ WebSocket (localhost:24050) ──▶ telemetry listener
                                                           │
-              evdev (read-only clicks) ──▶ UR fallback ───┤
+     evdev (Linux) / keyOverlay ──▶ KPS + UR fallback ────┤
                                                           ▼
-                                              Qt overlay (layer-shell)
+                                       Qt overlay (layer-shell / widget)
                                                  theme ⇆ active skin
-
-SayoDevice O3C ◀── raw HID (write-only config channel) ◀── config hub UI
 ```
 
 - Single asyncio loop inside the Qt main loop (qasync) — no threads
-- Input monitoring and device config are strictly isolated modules
+- A supervisor keeps tosu freshly attached: whenever osu! restarts, tosu is restarted too
 - Telemetry UR wins; evdev rhythm-stability UR only fills the gaps
 
 ## 🗺️ Roadmap
 
-- [ ] **Windows port**
+- [x] Windows port
 - [ ] More skin themes
-- [ ] Theme editor in the config hub
+- [ ] Theme editor
 
 ## 📄 License
 

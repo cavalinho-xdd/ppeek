@@ -9,9 +9,13 @@ from typing import Callable
 logger = logging.getLogger(__name__)
 
 try:
-    import evdev
-except ImportError:  # dev machine without /dev/input access
+    import evdev  # Linux only; absent on Windows/macOS builds
+except ImportError:
     evdev = None
+
+
+def evdev_available() -> bool:
+    return evdev is not None
 
 
 def list_keyboards() -> list[tuple[str, str]]:

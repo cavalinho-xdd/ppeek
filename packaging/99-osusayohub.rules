@@ -1,5 +1,4 @@
-# SayoDevice O3C: allow desktop user to read/write hidraw config channel
-# and read raw input events without root.
-# NOTE: update idVendor/idProduct once confirmed via `lsusb` (placeholders below).
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="8089", ATTRS{idProduct}=="0009", TAG+="uaccess"
+# Allow the desktop user to read raw input events (KPS/UR tracking)
+# from the keypad without root. Update idVendor/idProduct to match
+# your device (`lsusb`).
 KERNEL=="event*", SUBSYSTEM=="input", ATTRS{idVendor}=="8089", ATTRS{idProduct}=="0009", TAG+="uaccess"

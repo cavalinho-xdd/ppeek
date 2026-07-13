@@ -1,0 +1,70 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install . pyinstaller
+
+      - name: Build
+        run: >
+          pyinstaller --noconfirm --onedir --windowed --name OsuSayoHub
+          --add-data "osusayohub/overlay/Overlay.qml;osusayohub/overlay"
+          --add-data "osusayohub/assets;osusayohub/assets"
+          --add-data "packaging/osusayohub.svg;packaging"
+          --hidden-import PyQt6.QtSvg
+          --exclude-module PyQt6.QtQml
+          --exclude-module PyQt6.QtQuick
+          main.py
+
+      - name: Smoke test
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process -FilePath dist\OsuSayoHub\OsuSayoHub.exe -PassThru
+          Start-Sleep -Seconds 12
+          if ($p.HasExited) {
+            Write-Host "app exited early with code $($p.ExitCode)"
+            Get-ChildItem "$env:LOCALAPPDATA\OsuSayoHub" -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName }
+            exit 1
+          }
+          Get-Process OsuSayoHub -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-ChildItem "$env:LOCALAPPDATA\OsuSayoHub" -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName }
+
+      - name: Bundle tosu
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo tosuapp/tosu --pattern "*windows*.zip" --output tosu.zip
+          Expand-Archive tosu.zip -DestinationPath tosu-unpacked
+          $exe = Get-ChildItem tosu-unpacked -Recurse -Filter tosu.exe | Select-Object -First 1
+          Copy-Item $exe.FullName dist/OsuSayoHub/tosu.exe
+
+      - name: Zip
+        run: Compress-Archive -Path dist/OsuSayoHub -DestinationPath OsuSayoHub-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OsuSayoHub-windows
+          path: OsuSayoHub-windows.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: OsuSayoHub-windows.zip

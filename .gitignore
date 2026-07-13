@@ -6,7 +6,9 @@ __pycache__/
 build/
 pkg/
 src/
+dist/
 *.pkg.tar.zst
+*.spec
 
 # local tooling state
 .tokensave/

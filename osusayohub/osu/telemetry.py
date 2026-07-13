@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 # tosu v2 API — matches TelemetryFrame.from_json field paths
 DEFAULT_URI = "ws://127.0.0.1:24050/websocket/v2"
+# keyOverlay press counts live on the separate high-rate "precise" endpoint
+PRECISE_URI = "ws://127.0.0.1:24050/websocket/v2/precise"
 
 
 class GameState(enum.Enum):
@@ -85,6 +87,10 @@ class TelemetryFrame:
     # active skin name (lazer: read from SkinManager by tosu; empty if unavailable)
     skin: str = ""
 
+    # cumulative K1+K2+M1+M2 press count from tosu's keyOverlay; KPS is
+    # derived from deltas of this counter (evdev-free fallback on Windows)
+    key_total: int = 0
+
     @property
     def in_gameplay(self) -> bool:
         return self.state == GameState.PLAY
@@ -109,6 +115,16 @@ class TelemetryFrame:
         settings = payload.get("settings", {}) or {}
         skin_block = settings.get("skin", {}) or {}
 
+        # keyOverlay lives under play (tosu) or gameplay (gosumemory);
+        # entries are {"k1": {"isPressed": bool, "count": int}, ...}
+        key_overlay = (
+            play.get("keyOverlay", payload.get("keyOverlay", {})) or {}
+        )
+        key_total = 0
+        for entry in key_overlay.values():
+            if isinstance(entry, dict):
+                key_total += int(_num(entry.get("count")))
+
         return cls(
             state=GameState.from_raw(raw_state),
             connected=True,
@@ -131,6 +147,7 @@ class TelemetryFrame:
             stars=_num((stats.get("stars", {}) or {}).get("total", stats.get("SR"))),
             bpm=_num((stats.get("bpm", {}) or {}).get("common", stats.get("BPM"))),
             skin=str(skin_block.get("name", "")),
+            key_total=key_total,
         )
 
 
@@ -181,4 +198,52 @@ class TelemetryListener:
                 logger.debug("telemetry connection lost: %s, retrying in 2s", exc)
                 if self.on_disconnect:
                     self.on_disconnect()
+                await asyncio.sleep(2)
+
+
+class PreciseListener:
+    """Listens on tosu's /precise endpoint for keyOverlay press counters.
+
+    Payload: {"keys": {"k1": {"isPressed": bool, "count": int}, ...},
+    "hitErrors": [...]}. Calls on_key_total with the cumulative K1+K2+M1+M2
+    count — the evdev-free KPS source on Windows.
+    """
+
+    def __init__(
+        self,
+        uri: str = PRECISE_URI,
+        on_key_total: Callable[[int], None] | None = None,
+    ):
+        self._uri = uri
+        self.on_key_total = on_key_total
+        self._task: asyncio.Task | None = None
+        self._stop = False
+
+    def start(self) -> None:
+        self._stop = False
+        self._task = asyncio.ensure_future(self._run())
+
+    def stop(self) -> None:
+        self._stop = True
+        if self._task:
+            self._task.cancel()
+
+    async def _run(self) -> None:
+        while not self._stop:
+            try:
+                async with websockets.connect(self._uri, max_size=2**22) as ws:
+                    logger.info("connected to %s", self._uri)
+                    async for message in ws:
+                        try:
+                            keys = json.loads(message).get("keys", {}) or {}
+                        except (json.JSONDecodeError, AttributeError, TypeError):
+                            continue
+                        total = 0
+                        for entry in keys.values():
+                            if isinstance(entry, dict):
+                                total += int(_num(entry.get("count")))
+                        if self.on_key_total:
+                            self.on_key_total(total)
+            except (OSError, websockets.exceptions.WebSocketException) as exc:
+                logger.debug("precise connection lost: %s, retrying in 2s", exc)
                 await asyncio.sleep(2)

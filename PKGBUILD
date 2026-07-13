@@ -1,8 +1,8 @@
 # Maintainer: dzejkop <jakub.muzik07@gmail.com>
 pkgname=osusayohub
 pkgver=0.1.0
-pkgrel=7
-pkgdesc="osu!lazer overlay (live PP, hit-error/UR meter) and SayoDevice O3C configuration hub"
+pkgrel=8
+pkgdesc="osu!lazer overlay: live PP, hit-error/UR meter, KPS"
 arch=('any')
 url="https://github.com/cavalinho-xdd/osusayohub"
 license=('MIT')
@@ -12,7 +12,7 @@ depends=(
   'python-qasync'
   'python-websockets'
   'python-evdev'
-  'python-hidapi'
+  'python-psutil'
   'qt6-declarative'
   'layer-shell-qt'
 )

@@ -1,5 +1,5 @@
 PyQt6>=6.7
 qasync>=0.27
 websockets>=12.0
-evdev>=1.7
-hidapi>=0.14
+psutil>=5.9
+evdev>=1.7; sys_platform == "linux"
