@@ -55,6 +55,9 @@ jobs:
           $exe = Get-ChildItem tosu-unpacked -Recurse -Filter tosu.exe | Select-Object -First 1
           Copy-Item $exe.FullName dist/OsuSayoHub/tosu.exe
 
+      - name: Build Installer
+        run: iscc packaging\installer.iss
+
       - name: Zip
         run: Compress-Archive -Path dist/OsuSayoHub -DestinationPath OsuSayoHub-windows.zip
 
@@ -63,8 +66,15 @@ jobs:
           name: OsuSayoHub-windows
           path: OsuSayoHub-windows.zip
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OsuSayoHub-Installer
+          path: dist/OsuSayoHub-Installer.exe
+
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: OsuSayoHub-windows.zip
+          files: |
+            OsuSayoHub-windows.zip
+            dist/OsuSayoHub-Installer.exe
