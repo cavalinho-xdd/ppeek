@@ -1,7 +1,7 @@
 # Maintainer: dzejkop <jakub.muzik07@gmail.com>
 pkgname=osusayohub
 pkgver=0.1.0
-pkgrel=6
+pkgrel=7
 pkgdesc="osu!lazer overlay (live PP, hit-error/UR meter) and SayoDevice O3C configuration hub"
 arch=('any')
 url="https://github.com/dzejkop/osusayohub"
