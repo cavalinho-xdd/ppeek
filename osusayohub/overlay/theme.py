@@ -89,7 +89,7 @@ FREEDOM_DIVE = OverlayTheme(
     font="Fredoka",
 )
 
-# clearBlack by ononokie: pure black playfield, no bitmap decoration at
+# clearBlack by FakeCarpetGrass: pure black playfield, no bitmap decoration at
 # all — the entire skin is one crosshair-only hitcircle whose ring is a
 # full-spectrum rainbow gradient (see skin.ini Combo1..5: 164,100,240 /
 # 230,110,150 / 240,150,255 / 100,200,200 / 130,120,255), a matching

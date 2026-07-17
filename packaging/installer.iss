@@ -1,5 +1,5 @@
 #define MyAppName "OsuSayoHub"
-#define MyAppVersion "0.2.3"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "cavalinho-xdd"
 #define MyAppURL "https://github.com/cavalinho-xdd/osusayohub"
 #define MyAppExeName "OsuSayoHub.exe"

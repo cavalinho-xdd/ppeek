@@ -1,7 +1,7 @@
 # Maintainer: dzejkop <jakub.muzik07@gmail.com>
 pkgname=osusayohub
-pkgver=0.1.0
-pkgrel=8
+pkgver=0.3.0
+pkgrel=1
 pkgdesc="osu!lazer overlay: live PP, hit-error/UR meter, KPS"
 arch=('any')
 url="https://github.com/cavalinho-xdd/osusayohub"

@@ -1,8 +1,9 @@
-"""Settings window: overlay position/behavior and input source.
+"""Settings window: overlay position/behavior, input source, skin showcase.
 
-Native Qt widgets only (no stylesheets) so the window follows the user's
-system Qt theme. Writes settings; the overlay process watches the settings
-file and applies changes live.
+The General tab uses native Qt widgets only (no stylesheets) so it
+follows the user's system Qt theme. Writes settings; the overlay process
+watches the settings file and applies changes live. The Skins tab
+(confighub.skins) is intentionally custom-painted.
 """
 from __future__ import annotations
 
@@ -15,8 +16,12 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLabel,
     QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
     QWidget,
 )
+
+from osusayohub.confighub.skins import SkinShowcase
 
 ANCHOR_LABELS = [
     ("Top left", "top-left"),
@@ -32,10 +37,16 @@ class SettingsWindow(QWidget):
     def __init__(self, settings: QSettings):
         super().__init__()
         self.setWindowTitle("OsuSayoHub Settings")
-        self.resize(380, 260)
+        self.resize(720, 560)
         self._settings = settings
 
-        form = QFormLayout(self)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        tabs = QTabWidget()
+        layout.addWidget(tabs)
+
+        general = QWidget()
+        form = QFormLayout(general)
 
         self.auto_hide = QCheckBox("Show only during gameplay")
         self.auto_hide.setChecked(settings.value("overlay/auto_hide", True, type=bool))
@@ -85,6 +96,9 @@ class SettingsWindow(QWidget):
             )
         hint.setWordWrap(True)
         form.addRow(hint)
+
+        tabs.addTab(general, "General")
+        tabs.addTab(SkinShowcase(), "Skins")
 
     def _save(self, *_args) -> None:
         self._settings.setValue("overlay/auto_hide", self.auto_hide.isChecked())

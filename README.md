@@ -3,14 +3,20 @@
 **Live PP overlay for [osu!lazer](https://osu.ppy.sh) — hit-error meter, UR, combo, accuracy and KPS, with skin-driven themes. Windows & Linux.**
 
 <p align="center">
-  <img src="docs/overlay-arona-plana.png" alt="Arona & Plana pastel theme" width="380">
+  <img src="docs/screenshots/full-moon-night.png" alt="Fool Moon Night ink theme" width="380">
   &nbsp;&nbsp;
-  <img src="docs/overlay-fool-moon-night.png" alt="Fool Moon Night ink theme" width="380">
+  <img src="docs/screenshots/arona-plana.png" alt="Arona & Plana pastel theme" width="380">
+</p>
+<p align="center">
+  <img src="docs/screenshots/freedom-dive.png" alt="FREEDOM DiVE REiMAGINED cosmic theme" width="380">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/clear-black.png" alt="clearBlack rainbow-hitcircle theme" width="380">
 </p>
 
 <p align="center">
   <em>The overlay re-themes itself to match the skin you're playing —<br>
-  Arona &amp; Plana (Blue Archive) pastel on the left, FOOL MOON NIGHT hand-drawn ink on the right.</em>
+  FOOL MOON NIGHT ink, Arona &amp; Plana (Blue Archive) pastel,<br>
+  FREEDOM DiVE REiMAGINED cosmic, and clearBlack.</em>
 </p>
 
 ---
@@ -32,6 +38,8 @@ The overlay reads the **active skin name from osu!lazer** (via tosu) and switche
 |---|---|
 | FOOL MOON NIGHT | Hand-drawn monochrome ink: hatched planets, crescent moon, twinkling stars, water ripples, Gaegu font |
 | Arona & Plana (HK7205A) | Blue Archive pastel: red halo with its trailing string, stripe clusters, drifting diamonds, Readex Pro font — colors sampled from the skin's own `skin.ini` |
+| FREEDOM DiVE REiMAGINED | Cosmic blue: blob planets with rainbow rings, shooting-star arrows, diamond confetti, golden sparkles, the skin's BTMC tag, Fredoka font |
+| clearBlack | True black with rainbow-ring crosshair hitcircles looping their approach circles, drifting blue-violet cursor glow |
 | anything else | Falls back to the ink theme |
 
 Everything is painted procedurally — no image assets, just code. Adding a theme for your skin is a single palette entry in [`osusayohub/overlay/theme.py`](osusayohub/overlay/theme.py).
@@ -81,6 +89,21 @@ osu!lazer ──▶ tosu ──▶ WebSocket (localhost:24050) ──▶ telemet
 - [ ] More skin themes
 - [ ] Theme editor
 
+## 🙏 Credits
+
+The overlay themes are original, procedurally painted tributes — colors are sampled from each skin's `skin.ini` or matched by eye, and **no skin assets are copied or redistributed**. The skins remain the work and property of their authors — go grab them (the in-app **Skins** tab shows live previews and links straight to these pages):
+
+| Skin | Author | Download |
+|---|---|---|
+| FOOL MOON NIGHT | Spoo | [skins.osuck.net/skins/2931](https://skins.osuck.net/skins/2931) |
+| FREEDOM DiVE REiMAGINED | Spoo | [skins.osuck.net/skins/4062](https://skins.osuck.net/skins/4062) |
+| Blue Archive — Arona & Plana | Kitazaki Hinata | [skins.osuck.net/skins/4434](https://skins.osuck.net/skins/4434) |
+| clear black | FakeCarpetGrass | [skins.osuck.net/skins/308](https://skins.osuck.net/skins/308) |
+
+- FREEDOM DiVE REiMAGINED is a tribute to **[BTMC](https://www.twitch.tv/btmc)** — former top-tier osu! player and now host of the osu! Roundtable tournaments. The overlay's freedom theme carries the skin's BTMC tag in homage.
+- Live game data is provided by **[tosu](https://tosu.app)** (bundled and auto-managed on Windows).
+- **osu!** is a trademark of [ppy Pty Ltd](https://ppy.sh). This is an unofficial fan project, not affiliated with or endorsed by ppy, tosu, BTMC, or the skin authors.
+
 ## 📄 License
 
-MIT. Bundled fonts ([Gaegu](https://fonts.google.com/specimen/Gaegu), [Readex Pro](https://fonts.google.com/specimen/Readex+Pro)) are licensed under the SIL Open Font License.
+MIT. Bundled fonts ([Gaegu](https://fonts.google.com/specimen/Gaegu), [Readex Pro](https://fonts.google.com/specimen/Readex+Pro), [Fredoka](https://fonts.google.com/specimen/Fredoka), [Quicksand](https://fonts.google.com/specimen/Quicksand), [Mochiy Pop One](https://fonts.google.com/specimen/Mochiy+Pop+One)) are licensed under the SIL Open Font License.

@@ -343,9 +343,11 @@ class OverlayWindow(QWidget):
         return c
 
     def _paint_freedom_scene(self, p: QPainter, w: int, h: int, t: float) -> None:
-        """Cosmic scene from FREEDOM DiVE REiMAGINED by @tofumang_:
+        """Cosmic scene from FREEDOM DiVE REiMAGINED by Spoo:
         cute blob planets with rainbow rings, shooting star arrows,
-        white diamond confetti, and golden sparkle stars."""
+        white diamond confetti, golden sparkle stars, and the skin's
+        BTMC tag (the skin is a tribute to BTMC — former top player,
+        now host of the osu! Roundtable tournaments)."""
         self._paint_stars(p, w, h, t)
 
         # shooting star arrows radiating from the corners (like the skin art)
@@ -384,6 +386,38 @@ class OverlayWindow(QWidget):
         self._paint_blob_planet(p, w - 38, 30, 18, t, 0)   # big one, top-right
         self._paint_blob_planet(p, w * 0.32, 16, 8, t, 1)  # medium, top-left
         self._paint_blob_planet(p, 6, h * 0.6, 6, t, 2)    # tiny, peeking from left
+
+        self._paint_btmc_tag(p, 18, h - 14, t)
+
+    def _paint_btmc_tag(self, p: QPainter, x: float, y: float, t: float) -> None:
+        """Small dark rounded badge with bold BTMC lettering, echoing the
+        tag stitched into the skin art. (x, y) is the text baseline."""
+        p.save()
+        bob = math.sin(t * 1.1) * 1.2
+        p.translate(x, y + bob)
+        p.rotate(-4)
+
+        font = QFont(self._theme.font)
+        font.setPointSizeF(8.0)
+        font.setWeight(QFont.Weight.ExtraBold)
+        p.setFont(font)
+        fm = p.fontMetrics()
+        text_w = fm.horizontalAdvance("BTMC")
+        text_h = fm.capHeight()
+        pad_x, pad_y = 7.0, 5.0
+        rect = QRectF(0, -text_h - pad_y, text_w + pad_x * 2, text_h + pad_y * 2)
+
+        # deep navy badge with a faint cyan rim, like the skin's tag
+        p.setPen(QPen(QColor(150, 230, 255, 90), 1.0))
+        p.setBrush(QColor(16, 24, 58, 235))
+        p.drawRoundedRect(rect, 4.0, 4.0)
+
+        # lettering: faint cyan glow offset under crisp white
+        p.setPen(QColor(120, 210, 255, 110))
+        p.drawText(QPointF(pad_x + 1.0, 1.0), "BTMC")
+        p.setPen(QColor(255, 255, 255))
+        p.drawText(QPointF(pad_x, 0.0), "BTMC")
+        p.restore()
 
     def _paint_shooting_arrows(self, p: QPainter, w: int, h: int, t: float) -> None:
         """Thick rainbow arrow bands shooting across the panel, like the skin art."""
