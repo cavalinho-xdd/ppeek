@@ -68,6 +68,8 @@ class OverlayWindow(QWidget):
         ensure_theme_fonts()
         self._auto_hide = auto_hide
         self._theme = DEFAULT_THEME
+        self._skin_theme = DEFAULT_THEME       # what the active skin resolves to
+        self._theme_override: object = None    # OverlayTheme | None; wins over skin
 
         # target values (from telemetry) and displayed values (animated)
         self._frame = TelemetryFrame()
@@ -151,7 +153,9 @@ class OverlayWindow(QWidget):
         # empty skin means tosu failed to read it (lazer memory hiccup) —
         # keep the current theme rather than flashing back to the default
         if frame.skin and frame.skin != self._frame.skin:
-            self._theme = resolve_theme(frame.skin)
+            self._skin_theme = resolve_theme(frame.skin)
+            if self._theme_override is None:
+                self._theme = self._skin_theme
         prev_errors = len(self._frame.hit_errors)
         if frame.combo > self._frame.combo:
             self._combo_bump_t = time.monotonic()
@@ -183,6 +187,12 @@ class OverlayWindow(QWidget):
 
     def on_kps(self, kps: float) -> None:
         self._kps = kps
+
+    def apply_theme_override(self, theme) -> None:
+        """Manual theme (from settings) beats skin resolution; None = auto."""
+        self._theme_override = theme
+        self._theme = theme if theme is not None else self._skin_theme
+        self.update()
 
     def apply_layout(self, anchor_name: str, margin_x: int, margin_y: int, auto_hide: bool) -> None:
         self._auto_hide = auto_hide

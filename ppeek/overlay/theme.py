@@ -109,6 +109,95 @@ CLEAR_BLACK = OverlayTheme(
     deco_red=QColor(230, 110, 150),    # Combo2 rose
 )
 
+# -- color-palette themes -------------------------------------------------
+# Not tied to any osu! skin: all six reuse the universal "night" scene and
+# differ only in palette, so they stay deliberately close in feel. Colors
+# come from each scheme's canonical spec; ink is always the scheme's main
+# foreground so text stays readable. Quicksand for the whole set —
+# rounded, legible, consistent.
+
+GRUVBOX = OverlayTheme(
+    name="gruvbox",
+    scene="night",
+    ink=QColor(235, 219, 178),          # fg #ebdbb2
+    body_fill=QColor(29, 32, 33, 235),  # bg0_h #1d2021
+    miss=QColor(251, 73, 52),           # bright red #fb4934
+    bg_top=QColor(40, 40, 40, 215),     # bg0 #282828
+    bg_bottom=QColor(29, 32, 33, 235),
+    accent=QColor(251, 73, 52),
+    deco_red=QColor(254, 128, 25),      # bright orange #fe8019
+    font="Quicksand",
+)
+
+EVERFOREST = OverlayTheme(
+    name="everforest",
+    scene="night",
+    ink=QColor(211, 198, 170),          # fg #d3c6aa
+    body_fill=QColor(35, 42, 46, 235),  # bg0 #232a2e
+    miss=QColor(230, 126, 128),         # red #e67e80
+    bg_top=QColor(45, 53, 59, 215),     # bg1 #2d353b
+    bg_bottom=QColor(35, 42, 46, 235),
+    accent=QColor(167, 192, 128),       # green #a7c080
+    deco_red=QColor(230, 126, 128),
+    font="Quicksand",
+)
+
+NORD = OverlayTheme(
+    name="nord",
+    scene="night",
+    ink=QColor(216, 222, 233),          # snow storm #d8dee9
+    body_fill=QColor(36, 41, 51, 235),  # deep polar night
+    miss=QColor(191, 97, 106),          # aurora red #bf616a
+    bg_top=QColor(46, 52, 64, 215),     # polar night #2e3440
+    bg_bottom=QColor(36, 41, 51, 235),
+    accent=QColor(129, 161, 193),       # frost blue #81a1c1
+    deco_red=QColor(136, 192, 208),     # frost cyan #88c0d0
+    font="Quicksand",
+)
+
+TOKYO_NIGHT = OverlayTheme(
+    name="tokyo-night",
+    scene="night",
+    ink=QColor(192, 202, 245),          # fg #c0caf5
+    body_fill=QColor(22, 22, 30, 235),  # bg dark #16161e
+    miss=QColor(247, 118, 142),         # red #f7768e
+    bg_top=QColor(26, 27, 38, 215),     # bg #1a1b26
+    bg_bottom=QColor(22, 22, 30, 235),
+    accent=QColor(125, 207, 255),       # cyan #7dcfff
+    deco_red=QColor(187, 154, 247),     # purple #bb9af7
+    font="Quicksand",
+)
+
+CATPPUCCIN = OverlayTheme(
+    name="catppuccin",
+    scene="night",
+    ink=QColor(205, 214, 244),          # mocha text #cdd6f4
+    body_fill=QColor(24, 24, 37, 235),  # mantle #181825
+    miss=QColor(243, 139, 168),         # red #f38ba8
+    bg_top=QColor(30, 30, 46, 215),     # base #1e1e2e
+    bg_bottom=QColor(17, 17, 27, 235),  # crust #11111b
+    accent=QColor(203, 166, 247),       # mauve #cba6f7
+    deco_red=QColor(245, 194, 231),     # pink #f5c2e7
+    font="Quicksand",
+)
+
+AYU = OverlayTheme(
+    name="ayu",
+    scene="night",
+    ink=QColor(230, 225, 207),          # fg #e6e1cf
+    body_fill=QColor(13, 16, 23, 235),  # #0d1017
+    miss=QColor(240, 113, 120),         # red #f07178
+    bg_top=QColor(16, 20, 30, 215),
+    bg_bottom=QColor(10, 14, 20, 235),  # bg #0a0e14
+    accent=QColor(230, 180, 80),        # yellow #e6b450
+    deco_red=QColor(255, 143, 64),      # orange #ff8f40
+    font="Quicksand",
+)
+
+PALETTE_THEMES: list[OverlayTheme] = [
+    GRUVBOX, EVERFOREST, NORD, TOKYO_NIGHT, CATPPUCCIN, AYU,
+]
+
 # first substring hit wins; needles are matched casefolded
 SKIN_THEMES: list[tuple[str, OverlayTheme]] = [
     ("freedom dive", FREEDOM_DIVE),
@@ -118,6 +207,13 @@ SKIN_THEMES: list[tuple[str, OverlayTheme]] = [
     ("clearblack", CLEAR_BLACK),
     ("clear black", CLEAR_BLACK),
 ]
+
+# every theme addressable by its stable name — used by the manual override
+# (settings key overlay/theme_override) and the config-hub Apply buttons
+THEMES_BY_NAME: dict[str, OverlayTheme] = {
+    t.name: t
+    for t in (FULL_MOON_NIGHT, ARONA_PLANA, FREEDOM_DIVE, CLEAR_BLACK, *PALETTE_THEMES)
+}
 
 
 def resolve_theme(skin_name: str) -> OverlayTheme:

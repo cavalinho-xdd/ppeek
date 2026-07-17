@@ -38,18 +38,21 @@ DEMO_FRAME = TelemetryFrame(
 )
 
 
-def render_theme_preview(skin: str, anim_t: float, scale: int = 2) -> QImage:
+def render_theme_preview(skin: str, anim_t: float, scale: int = 2, theme=None) -> QImage:
     """Render one theme's overlay preview to a transparent ARGB image.
 
     ``skin`` goes through the overlay's normal skin-name theme resolution;
-    ``anim_t`` freezes the scene animation at that clock phase. Requires a
-    live QApplication.
+    pass ``theme`` (an OverlayTheme) instead for themes with no skin
+    tie-in (color palettes). ``anim_t`` freezes the scene animation at
+    that clock phase. Requires a live QApplication.
     """
     win = OverlayWindow(auto_hide=False)
     win._tick.stop()
 
     frame = dataclasses.replace(DEMO_FRAME, skin=skin)
     win.on_telemetry_frame(frame)
+    if theme is not None:
+        win.apply_theme_override(theme)
     win.on_kps(14.0)
 
     # skip the lerp: show final values immediately

@@ -98,7 +98,7 @@ class SettingsWindow(QWidget):
         form.addRow(hint)
 
         tabs.addTab(general, "General")
-        tabs.addTab(SkinShowcase(), "Skins")
+        tabs.addTab(SkinShowcase(settings), "Skins")
 
     def _save(self, *_args) -> None:
         self._settings.setValue("overlay/auto_hide", self.auto_hide.isChecked())

@@ -44,6 +44,8 @@ The overlay reads the **active skin name from osu!lazer** (via tosu) and switche
 
 Everything is painted procedurally — no image assets, just code. Adding a theme for your skin is a single palette entry in [`ppeek/overlay/theme.py`](ppeek/overlay/theme.py).
 
+**Prefer picking by hand?** The Settings → Skins tab shows live previews of every theme — the four skin tributes plus six classic color palettes (**Gruvbox, Everforest, Nord, Tokyo Night, Catppuccin, Ayu**) — with an *apply* button on each card. Applying overrides the skin matching until you switch back to *Auto (match my skin)*; the running overlay swaps live.
+
 ## 🚀 Getting started
 
 ### Windows 10 / 11
@@ -86,7 +88,7 @@ osu!lazer ──▶ tosu ──▶ WebSocket (localhost:24050) ──▶ telemet
 ## 🗺️ Roadmap
 
 - [x] Windows port
-- [ ] More skin themes
+- [x] More themes (six color-palette themes + manual apply)
 - [ ] Theme editor
 
 ## 🙏 Credits

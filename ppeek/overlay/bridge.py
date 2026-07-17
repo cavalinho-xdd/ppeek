@@ -41,6 +41,8 @@ class HubState(QObject):
         super().__init__()
         self._frame = TelemetryFrame()
         self._theme = DEFAULT_THEME
+        self._skin_theme = DEFAULT_THEME       # what the active skin resolves to
+        self._theme_override = None            # OverlayTheme | None; wins over skin
         self._connected = False
         self._ur = 0.0
         self._kps = 0.0
@@ -61,9 +63,9 @@ class HubState(QObject):
         # empty skin means tosu failed to read it (lazer memory hiccup) —
         # keep the current theme rather than flashing back to the default
         if frame.skin and frame.skin != self._frame.skin:
-            theme = resolve_theme(frame.skin)
-            if theme is not self._theme:
-                self._theme = theme
+            self._skin_theme = resolve_theme(frame.skin)
+            if self._theme_override is None and self._skin_theme is not self._theme:
+                self._theme = self._skin_theme
                 self.themeChanged.emit()
         prev = len(self._frame.hit_errors)
         # a fresh play resets the array; resync instead of replaying all
@@ -105,6 +107,14 @@ class HubState(QObject):
         if abs(kps - self._kps) > 0.01:
             self._kps = kps
             self.frameChanged.emit()
+
+    def apply_theme_override(self, theme) -> None:
+        """Manual theme (from settings) beats skin resolution; None = auto."""
+        self._theme_override = theme
+        effective = theme if theme is not None else self._skin_theme
+        if effective is not self._theme:
+            self._theme = effective
+            self.themeChanged.emit()
 
     def apply_layout(self, anchor_name: str, margin_x: int, margin_y: int, auto_hide: bool) -> None:
         self._anchor = ANCHOR_PRESETS.get(anchor_name, self._anchor)

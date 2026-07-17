@@ -59,11 +59,18 @@ def run_overlay() -> None:
         mx = int(settings.value("overlay/margin_x", 24))
         my = int(settings.value("overlay/margin_y", 24))
         ah = settings.value("overlay/auto_hide", True, type=bool)
-        
-        logger.info("layout: anchor=%s mx=%s my=%s", anchor, mx, my)
+
+        from ppeek.overlay.theme import THEMES_BY_NAME
+
+        override = THEMES_BY_NAME.get(str(settings.value("overlay/theme_override", "")))
+
+        logger.info("layout: anchor=%s mx=%s my=%s override=%s",
+                    anchor, mx, my, override.name if override else "auto")
         hub.apply_layout(anchor_name=anchor, margin_x=mx, margin_y=my, auto_hide=ah)
+        hub.apply_theme_override(override)
         if window is not None:
             window.apply_layout(anchor_name=anchor, margin_x=mx, margin_y=my, auto_hide=ah)
+            window.apply_theme_override(override)
 
     read_layout()
     if use_layer_shell:
