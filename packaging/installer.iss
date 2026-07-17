@@ -1,5 +1,5 @@
 #define MyAppName "PPeek"
-#define MyAppVersion "0.5.0"
+#define MyAppVersion "0.5.1"
 #define MyAppPublisher "cavalinho-xdd"
 #define MyAppURL "https://github.com/cavalinho-xdd/ppeek"
 #define MyAppExeName "PPeek.exe"
