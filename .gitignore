@@ -13,6 +13,9 @@ dist/
 # local tooling state
 .tokensave/
 .claude/
+.agents/
+.github/
+agent/
 
 # local project notes
 CLAUDE.md

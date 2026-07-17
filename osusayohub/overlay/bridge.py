@@ -252,11 +252,11 @@ class HubState(QObject):
 
     @pyqtProperty(str, constant=True)
     def pastelFontPath(self) -> str:
-        return self._font_uri("ReadexPro-Regular.ttf")
+        return self._font_uri("Quicksand-VariableFont.ttf")
 
     @pyqtProperty(str, constant=True)
-    def pastelFontBoldPath(self) -> str:
-        return self._font_uri("ReadexPro-bold.ttf")
+    def freedomFontPath(self) -> str:
+        return self._font_uri("Fredoka-VariableFont.ttf")
 
     @staticmethod
     def _font_uri(filename: str) -> str:

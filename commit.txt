@@ -1,0 +1,5 @@
+feat(theme): bundle fonts and add clearBlack
+
+Bundle Quicksand and Fredoka fonts so Arona/Plana and Freedom
+DiVE themes work without system font installs. Add procedural
+clearBlack theme with rainbow crosshair and drifting cursor.

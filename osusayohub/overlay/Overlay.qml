@@ -25,16 +25,21 @@ Window {
     readonly property bool pastel: hub.scene === "pastel"
     readonly property bool night: hub.scene === "night"
     readonly property bool freedom: hub.scene === "freedom"
+    readonly property bool clearblack: hub.scene === "clearblack"
     readonly property string ink: hub.ink
     readonly property string inkDim: hub.inkDim
     readonly property string paper: hub.paper
     readonly property string accent: hub.accent
     readonly property string decoRed: hub.decoRed
     readonly property string blood: hub.missColor
-    // bundled Readex Pro wins; falls back to a system-installed copy (or Sans)
-    readonly property string fontFamily: pastel
-        ? (readex.status === FontLoader.Ready ? readex.name : hub.themeFont)
-        : gaegu.name
+    // bundled fonts win; falls back to a system-installed copy (or Sans).
+    // clearBlack ships no custom font at all, so it just takes hub.themeFont.
+    readonly property string fontFamily: {
+        if (freedom) return (freedomFont.status === FontLoader.Ready ? freedomFont.name : hub.themeFont)
+        if (pastel) return (quicksand.status === FontLoader.Ready ? quicksand.name : hub.themeFont)
+        if (clearblack) return hub.themeFont
+        return (gaegu.status === FontLoader.Ready ? gaegu.name : hub.themeFont)
+    }
 
     // pastel grade inks — cartoonish but muted, so they sit in the b/w night scene
     readonly property var gradeColors: ({
@@ -587,6 +592,112 @@ Window {
                 }
             }
 
+            // -- clearBlack scenery ---------------------------------------
+            // clearBlack ships no bitmap decoration at all — the whole skin
+            // is one crosshair hitcircle with a full-spectrum rainbow ring
+            // and a matching approach circle, on a true-black playfield.
+            // The scene leans entirely on that one motif: three of those
+            // hitcircles looping their own approach circles, plus a
+            // drifting cursor with the skin's blue-violet glow.
+
+            Canvas {
+                id: clearblackScene
+                anchors.fill: parent
+                visible: root.clearblack
+                onVisibleChanged: if (visible) requestPaint()
+                Component.onCompleted: requestPaint()
+                Connections { target: hub; function onThemeChanged() { clearblackScene.requestPaint() } }
+
+                // phase: 0..1 approach-circle loop; rot: slow ring/cursor drift
+                property real phase: 0
+                NumberAnimation on phase { from: 0; to: 1; duration: 1700; loops: Animation.Infinite; running: clearblackScene.visible }
+                property real rot: 0
+                NumberAnimation on rot { from: 0; to: Math.PI * 2; duration: 6000; loops: Animation.Infinite; running: clearblackScene.visible }
+                onPhaseChanged: requestPaint()
+                onRotChanged: requestPaint()
+
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+
+                    function rainbowRing(cx, cy, r, rotOffset) {
+                        var segs = 40
+                        ctx.lineWidth = Math.max(1.6, r * 0.14)
+                        for (var i = 0; i < segs; i++) {
+                            var a0 = rot + rotOffset + (i / segs) * Math.PI * 2
+                            var a1 = rot + rotOffset + ((i + 1.05) / segs) * Math.PI * 2
+                            ctx.strokeStyle = Qt.hsva(i / segs, 0.7, 1.0, 1.0)
+                            ctx.beginPath()
+                            ctx.arc(cx, cy, r, a0, a1)
+                            ctx.stroke()
+                        }
+                    }
+
+                    function hitcircle(cx, cy, r, seed) {
+                        // approach circle: shrinks in, fades in, then loops
+                        var ph = (phase + seed * 0.33) % 1.0
+                        var ar = r * (2.15 - 1.15 * ph)
+                        ctx.strokeStyle = root.ink
+                        ctx.globalAlpha = Math.min(1.0, ph * 2.2) * 0.8
+                        ctx.lineWidth = 1.1
+                        ctx.beginPath(); ctx.arc(cx, cy, ar, 0, 2 * Math.PI); ctx.stroke()
+                        ctx.globalAlpha = 1
+
+                        // near-black body occludes the star field behind it
+                        ctx.fillStyle = root.paper
+                        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill()
+
+                        rainbowRing(cx, cy, r, seed * 1.7)
+
+                        ctx.strokeStyle = root.ink
+                        ctx.globalAlpha = 0.82
+                        ctx.lineWidth = 1.0
+                        ctx.beginPath(); ctx.arc(cx, cy, r * 0.88, 0, 2 * Math.PI); ctx.stroke()
+                        ctx.globalAlpha = 1
+
+                        // soft glow behind the crosshair
+                        ctx.fillStyle = root.accent
+                        ctx.globalAlpha = 0.3
+                        ctx.beginPath(); ctx.arc(cx, cy, r * 0.5, 0, 2 * Math.PI); ctx.fill()
+                        ctx.globalAlpha = 1
+
+                        ctx.strokeStyle = root.ink
+                        ctx.lineWidth = 1.4
+                        var cs = r * 0.22
+                        ctx.beginPath(); ctx.moveTo(cx - cs, cy); ctx.lineTo(cx + cs, cy); ctx.stroke()
+                        ctx.beginPath(); ctx.moveTo(cx, cy - cs); ctx.lineTo(cx, cy + cs); ctx.stroke()
+                    }
+
+                    hitcircle(width - 40, 30, 18, 0)
+                    hitcircle(width * 0.30, 15, 9, 1)
+                    hitcircle(10, height * 0.64, 6, 2)
+
+                    // wandering cursor glow, like the skin's cursor.png
+                    function cursorPos(tt) {
+                        return [width * (0.18 + 0.64 * (0.5 + 0.5 * Math.sin(tt * 0.7))),
+                                height * (0.68 + 0.16 * Math.sin(tt * 1.1 + 1.3))]
+                    }
+                    ctx.strokeStyle = root.accent
+                    ctx.globalAlpha = 0.3
+                    ctx.lineWidth = 1.2
+                    ctx.beginPath()
+                    for (var i = 8; i >= 0; i--) {
+                        var tp = cursorPos(rot - i * 0.12)
+                        if (i === 8) ctx.moveTo(tp[0], tp[1]); else ctx.lineTo(tp[0], tp[1])
+                    }
+                    ctx.stroke()
+                    ctx.globalAlpha = 1
+
+                    var cp = cursorPos(rot)
+                    ctx.fillStyle = root.accent
+                    ctx.globalAlpha = 0.5
+                    ctx.beginPath(); ctx.arc(cp[0], cp[1], 6, 0, 2 * Math.PI); ctx.fill()
+                    ctx.globalAlpha = 1
+                    ctx.fillStyle = root.ink
+                    ctx.beginPath(); ctx.arc(cp[0], cp[1], 2.2, 0, 2 * Math.PI); ctx.fill()
+                }
+            }
+
             // -- live numbers --------------------------------------------
 
             // PP hero
@@ -735,10 +846,11 @@ Window {
         source: hub.fontPath
     }
     FontLoader {
-        id: readex
+        id: quicksand
         source: hub.pastelFontPath
     }
     FontLoader {
-        source: hub.pastelFontBoldPath  // registers the bold face for font.bold
+        id: freedomFont
+        source: hub.freedomFontPath
     }
 }

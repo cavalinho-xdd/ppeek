@@ -70,7 +70,7 @@ ARONA_PLANA = OverlayTheme(
     bg_bottom=QColor(8, 16, 26, 235),
     accent=QColor(88, 178, 235),
     deco_red=QColor(228, 90, 105),
-    font="Readex Pro",
+    font="Quicksand",
 )
 
 DEFAULT_THEME = FULL_MOON_NIGHT
@@ -85,7 +85,27 @@ FREEDOM_DIVE = OverlayTheme(
     bg_bottom=QColor(8, 12, 35, 240),  # deep space void
     accent=QColor(150, 230, 255),      # Combo1 light cyan
     deco_red=QColor(255, 125, 177),    # Combo2 pink
-    font="Mochiy Pop One",
+    font="Fredoka",
+)
+
+# clearBlack by ononokie: pure black playfield, no bitmap decoration at
+# all — the entire skin is one crosshair-only hitcircle whose ring is a
+# full-spectrum rainbow gradient (see skin.ini Combo1..5: 164,100,240 /
+# 230,110,150 / 240,150,255 / 100,200,200 / 130,120,255), a matching
+# rainbow approach circle, and a soft blue-violet cursor glow. Nothing
+# else is skinned — hit-bursts, sliders, spinner all fall back to
+# osu!'s stock look, so this theme leans on that same rainbow-ring +
+# crosshair motif rather than borrowed skin art.
+CLEAR_BLACK = OverlayTheme(
+    name="clear-black",
+    scene="clearblack",
+    ink=QColor(245, 245, 248),
+    body_fill=QColor(4, 4, 5, 235),
+    miss=QColor(230, 110, 150),        # Combo2 rose
+    bg_top=QColor(10, 10, 11, 215),
+    bg_bottom=QColor(2, 2, 2, 245),
+    accent=QColor(140, 150, 255),      # cursor glow blue-violet
+    deco_red=QColor(230, 110, 150),    # Combo2 rose
 )
 
 # first substring hit wins; needles are matched casefolded
@@ -94,6 +114,8 @@ SKIN_THEMES: list[tuple[str, OverlayTheme]] = [
     ("fool moon night", FULL_MOON_NIGHT),
     ("hk7205", ARONA_PLANA),
     ("アロナ", ARONA_PLANA),
+    ("clearblack", CLEAR_BLACK),
+    ("clear black", CLEAR_BLACK),
 ]
 
 

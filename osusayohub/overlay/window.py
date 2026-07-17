@@ -1,12 +1,17 @@
 """Transparent, focus-free overlay: PP, combo, accuracy, hit-error/UR meter, KPS.
 
-Two procedural visual themes (no image assets), auto-selected by the
+Procedural visual themes (no image assets), auto-selected by the
 active osu! skin reported over telemetry (see overlay/theme.py):
 
 - "night" — FULL MOON NIGHT: hand-drawn monochrome ink on a night sky;
   hatched planets, twinkling stars, a crescent moon, water ripples.
 - "pastel" — Arona & Plana (Blue Archive): pastel blue on deep navy;
   tilted halo, drifting hollow squares, x-sparks, dot grid.
+- "freedom" — FREEDOM DiVE REiMAGINED: cosmic blue with blob planets,
+  rainbow shooting arrows, white confetti, golden sparkle stars.
+- "clearblack" — clearBlack: true black with rainbow-ring crosshair
+  hitcircles looping their approach circles, and a drifting blue-violet
+  cursor glow.
 """
 from __future__ import annotations
 
@@ -16,7 +21,17 @@ import time
 from collections import deque
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
+from PyQt6.QtGui import (
+    QBrush,
+    QColor,
+    QConicalGradient,
+    QFont,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QRadialGradient,
+)
 from PyQt6.QtWidgets import QWidget
 
 from osusayohub.osu.telemetry import GameState, TelemetryFrame
@@ -230,6 +245,8 @@ class OverlayWindow(QWidget):
             self._paint_pastel_scene(p, w, h, t)
         elif self._theme.scene == "freedom":
             self._paint_freedom_scene(p, w, h, t)
+        elif self._theme.scene == "clearblack":
+            self._paint_clearblack_scene(p, w, h, t)
         else:
             self._paint_stars(p, w, h, t)
             self._paint_planet(p, w - 52, 36, 20, alpha=150, ring=True)
@@ -477,6 +494,100 @@ class OverlayWindow(QWidget):
         p.restore()
 
         p.restore()
+
+    def _paint_clearblack_scene(self, p: QPainter, w: int, h: int, t: float) -> None:
+        """clearBlack by ononokie ships no bitmap decoration at all — the
+        whole skin is one crosshair hitcircle with a full-spectrum rainbow
+        ring and a matching approach circle, on a true-black playfield.
+        The scene leans entirely on that one motif: three of those
+        hitcircles (looping their own approach circles), the shared
+        twinkling +/dot field standing in for a scattered playfield, and
+        a drifting cursor with the skin's blue-violet glow."""
+        self._paint_stars(p, w, h, t)
+        self._paint_hitcircle(p, w - 40, 30, 18, t, 0)
+        self._paint_hitcircle(p, w * 0.30, 15, 9, t, 1)
+        self._paint_hitcircle(p, 10, h * 0.64, 6, t, 2)
+        self._paint_cb_cursor(p, w, h, t)
+
+    def _paint_hitcircle(self, p: QPainter, cx: float, cy: float, r: float,
+                         t: float, seed: int) -> None:
+        """One clearBlack hitcircle: looping approach circle, near-black
+        body, full-spectrum rainbow ring (its combo colours run the whole
+        hue wheel — skin.ini Combo1..5 are just five samples of it),
+        crisp white overlay ring, and the center crosshair."""
+        # approach circle: shrinks in, fades in, then loops — same rhythm
+        # as the real thing bearing down on a note
+        period = 1.7 + 0.15 * seed
+        phase = ((t + seed * 0.6) % period) / period
+        ar = r * (2.15 - 1.15 * phase)
+        aalpha = int(200 * min(1.0, phase * 2.2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(self._ink(aalpha), 1.1))
+        p.drawEllipse(QPointF(cx, cy), ar, ar)
+
+        body = QPainterPath()
+        body.addEllipse(QPointF(cx, cy), r, r)
+        p.fillPath(body, self._theme.body_fill)
+
+        grad = QConicalGradient(cx, cy, (t * 24 + seed * 70) % 360)
+        stops = 12
+        for i in range(stops + 1):
+            hue = int(360 * i / stops) % 360
+            grad.setColorAt(i / stops, QColor.fromHsv(hue, 190, 255))
+        p.setPen(QPen(QBrush(grad), max(1.6, r * 0.14)))
+        p.drawEllipse(QPointF(cx, cy), r, r)
+
+        p.setPen(QPen(self._ink(210), 1.0))
+        p.drawEllipse(QPointF(cx, cy), r * 0.88, r * 0.88)
+
+        glow = QRadialGradient(QPointF(cx, cy), r * 0.5)
+        glow_c = QColor(self._theme.accent)
+        glow_c.setAlpha(120)
+        glow_edge = QColor(self._theme.accent)
+        glow_edge.setAlpha(0)
+        glow.setColorAt(0.0, glow_c)
+        glow.setColorAt(1.0, glow_edge)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(cx, cy), r * 0.5, r * 0.5)
+
+        cs = r * 0.22
+        p.setPen(QPen(self._ink(235), 1.4))
+        p.drawLine(QPointF(cx - cs, cy), QPointF(cx + cs, cy))
+        p.drawLine(QPointF(cx, cy - cs), QPointF(cx, cy + cs))
+
+    def _paint_cb_cursor(self, p: QPainter, w: int, h: int, t: float) -> None:
+        """Wandering cursor glow, like the skin's soft blue-violet cursor.png,
+        drifting a slow lissajous path with a fading trail."""
+        def pos(tt: float) -> tuple[float, float]:
+            x = w * (0.18 + 0.64 * (0.5 + 0.5 * math.sin(tt * 0.35)))
+            y = h * (0.68 + 0.16 * math.sin(tt * 0.55 + 1.3))
+            return x, y
+
+        trail = QPainterPath()
+        for i in range(10, -1, -1):
+            tx, ty = pos(t - i * 0.05)
+            if i == 10:
+                trail.moveTo(tx, ty)
+            else:
+                trail.lineTo(tx, ty)
+        p.setPen(QPen(self._accent(70), 1.2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(trail)
+
+        cx, cy = pos(t)
+        glow = QRadialGradient(QPointF(cx, cy), 9)
+        c0 = QColor(self._theme.accent)
+        c0.setAlpha(210)
+        c1 = QColor(self._theme.accent)
+        c1.setAlpha(0)
+        glow.setColorAt(0.0, c0)
+        glow.setColorAt(1.0, c1)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(cx, cy), 9, 9)
+        p.setBrush(self._ink(235))
+        p.drawEllipse(QPointF(cx, cy), 2.2, 2.2)
 
     def _paint_pastel_scene(self, p: QPainter, w: int, h: int, t: float) -> None:
         """Blue Archive motifs, after the Arona & Plana skin art: diagonal
