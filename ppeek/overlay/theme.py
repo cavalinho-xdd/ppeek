@@ -112,14 +112,15 @@ CLEAR_BLACK = OverlayTheme(
 # -- color-palette themes -------------------------------------------------
 # Not tied to any osu! skin: all six reuse the universal "night" scene and
 # differ only in palette, so they stay deliberately close in feel. Colors
-# come from each scheme's canonical spec; ink is always the scheme's main
-# foreground so text stays readable. Quicksand for the whole set —
-# rounded, legible, consistent.
+# come from each scheme's canonical spec; ink carries the scheme's
+# signature hue (the night scene tints everything with ink, so a neutral
+# foreground would make all six look alike). Nord/Tokyo Night keep their
+# characteristic cool foregrounds. Quicksand for the whole set.
 
 GRUVBOX = OverlayTheme(
     name="gruvbox",
     scene="night",
-    ink=QColor(235, 219, 178),          # fg #ebdbb2
+    ink=QColor(251, 90, 68),            # bright red, lifted for contrast
     body_fill=QColor(29, 32, 33, 235),  # bg0_h #1d2021
     miss=QColor(251, 73, 52),           # bright red #fb4934
     bg_top=QColor(40, 40, 40, 215),     # bg0 #282828
@@ -132,7 +133,7 @@ GRUVBOX = OverlayTheme(
 EVERFOREST = OverlayTheme(
     name="everforest",
     scene="night",
-    ink=QColor(211, 198, 170),          # fg #d3c6aa
+    ink=QColor(167, 192, 128),          # green #a7c080
     body_fill=QColor(35, 42, 46, 235),  # bg0 #232a2e
     miss=QColor(230, 126, 128),         # red #e67e80
     bg_top=QColor(45, 53, 59, 215),     # bg1 #2d353b
@@ -171,7 +172,7 @@ TOKYO_NIGHT = OverlayTheme(
 CATPPUCCIN = OverlayTheme(
     name="catppuccin",
     scene="night",
-    ink=QColor(205, 214, 244),          # mocha text #cdd6f4
+    ink=QColor(203, 166, 247),          # mauve #cba6f7
     body_fill=QColor(24, 24, 37, 235),  # mantle #181825
     miss=QColor(243, 139, 168),         # red #f38ba8
     bg_top=QColor(30, 30, 46, 215),     # base #1e1e2e
@@ -184,7 +185,7 @@ CATPPUCCIN = OverlayTheme(
 AYU = OverlayTheme(
     name="ayu",
     scene="night",
-    ink=QColor(230, 225, 207),          # fg #e6e1cf
+    ink=QColor(230, 180, 80),           # yellow #e6b450
     body_fill=QColor(13, 16, 23, 235),  # #0d1017
     miss=QColor(240, 113, 120),         # red #f07178
     bg_top=QColor(16, 20, 30, 215),
