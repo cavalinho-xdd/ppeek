@@ -706,6 +706,11 @@ Window {
             }
 
             // -- live numbers --------------------------------------------
+            // hidden while tosu isn't attached, so the "waiting" notice
+            // doesn't sit on top of a panel full of zeroes
+            Item {
+                anchors.fill: parent
+                visible: hub.connected
 
             // PP hero
             Text {
@@ -834,6 +839,8 @@ Window {
                     }
                 }
             }
+
+            }  // live numbers
 
             Text {
                 anchors.centerIn: parent
