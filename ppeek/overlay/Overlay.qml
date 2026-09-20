@@ -12,7 +12,12 @@ Window {
     readonly property int hudHeight: 118
     width: hudWidth + hub.marginX
     height: hudHeight + hub.marginY
-    visible: hub.visible
+    // Qt LayerShellQt only completes the wlr-layer-shell configure/commit
+    // handshake on the window's first show(); toggling `visible` later
+    // (e.g. entering gameplay after starting hidden) leaves the surface
+    // unmapped on wlroots compositors. Stay mapped always and drive the
+    // actual show/hide through the content's opacity instead.
+    visible: true
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowTransparentForInput
 
@@ -57,6 +62,8 @@ Window {
         height: root.hudHeight
         x: hub.anchoredLeft ? hub.marginX : (hub.anchoredRight ? 0 : hub.marginX / 2)
         y: hub.anchoredTop ? hub.marginY : 0
+        opacity: hub.visible ? 1 : 0
+        visible: opacity > 0
 
         // offset second outline — sketchy double-line look
         Rectangle {
