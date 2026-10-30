@@ -281,5 +281,9 @@ class HubState(QObject):
         return _hex(self._theme.miss)
 
     @pyqtProperty(str, notify=themeChanged)
+    def frame(self) -> str:
+        return self._theme.frame
+
+    @pyqtProperty(str, notify=themeChanged)
     def themeFont(self) -> str:
         return self._theme.font

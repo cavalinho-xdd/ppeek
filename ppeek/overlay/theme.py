@@ -40,6 +40,10 @@ class OverlayTheme:
     accent: QColor        # secondary hue for scene decoration
     deco_red: QColor      # tertiary pop color (Arona's red halo string)
     font: str = "Sans"
+    # panel look (Hud.qml): "rounded" card, "sketch" hand-drawn ink,
+    # "painted" soft watercolor, "archive" Blue Archive cut-corner card,
+    # "minimal" hard-edged hairline box
+    frame: str = "rounded"
 
 
 FULL_MOON_NIGHT = OverlayTheme(
@@ -53,6 +57,7 @@ FULL_MOON_NIGHT = OverlayTheme(
     accent=QColor(240, 240, 245),
     deco_red=QColor(235, 110, 110),
     font="Gaegu",
+    frame="sketch",
 )
 
 # Arona & Plana (Blue Archive), by Kitazaki Hinata. Colors taken from the
@@ -72,6 +77,7 @@ ARONA_PLANA = OverlayTheme(
     accent=QColor(88, 178, 235),
     deco_red=QColor(228, 90, 105),
     font="Quicksand",
+    frame="archive",
 )
 
 DEFAULT_THEME = FULL_MOON_NIGHT
@@ -87,6 +93,7 @@ FREEDOM_DIVE = OverlayTheme(
     accent=QColor(150, 230, 255),      # Combo1 light cyan
     deco_red=QColor(255, 125, 177),    # Combo2 pink
     font="Fredoka",
+    frame="painted",
 )
 
 # clearBlack by FakeCarpetGrass: pure black playfield, no bitmap decoration at
@@ -107,6 +114,7 @@ CLEAR_BLACK = OverlayTheme(
     bg_bottom=QColor(2, 2, 2, 245),
     accent=QColor(140, 150, 255),      # cursor glow blue-violet
     deco_red=QColor(230, 110, 150),    # Combo2 rose
+    frame="minimal",
 )
 
 # -- color-palette themes -------------------------------------------------

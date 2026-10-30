@@ -36,10 +36,10 @@ The overlay reads the **active skin name from osu!lazer** (via tosu) and switche
 
 | Skin | Theme |
 |---|---|
-| FOOL MOON NIGHT | Hand-drawn monochrome ink: hatched planets, crescent moon, twinkling stars, water ripples, Gaegu font |
-| Arona & Plana (HK7205A) | Blue Archive pastel: red halo with its trailing string, stripe clusters, drifting diamonds, Readex Pro font — colors sampled from the skin's own `skin.ini` |
-| FREEDOM DiVE REiMAGINED | Cosmic blue: blob planets with rainbow rings, shooting-star arrows, diamond confetti, golden sparkles, the skin's BTMC tag, Fredoka font |
-| clearBlack | True black with rainbow-ring crosshair hitcircles looping their approach circles, drifting blue-violet cursor glow |
+| FOOL MOON NIGHT | Hand-drawn monochrome ink on a square, grainy panel whose inked edges "boil" like hand animation: hatched planets, crescent moon, twinkling stars, water ripples, Gaegu font |
+| Arona & Plana (HK7205A) | Blue Archive pastel on a cut-corner UI card: red halo with its trailing string, stripe clusters, drifting diamonds, Readex Pro font — colors sampled from the skin's own `skin.ini` |
+| FREEDOM DiVE REiMAGINED | Painted depth: a watercolor nebula with no hard edge, fluffy glowing cloud planets with brush-stroke rainbow rings, distant ones fading into the haze, shooting-star arrows, diamond confetti, golden sparkles, the skin's BTMC tag, Fredoka font |
+| clearBlack | Hard-edged hairline box, true black with rainbow-ring crosshair hitcircles looping their approach circles, drifting blue-violet cursor glow |
 | anything else | Falls back to the ink theme |
 
 Everything is painted procedurally — no image assets, just code. Adding a theme for your skin is a single palette entry in [`ppeek/overlay/theme.py`](ppeek/overlay/theme.py).

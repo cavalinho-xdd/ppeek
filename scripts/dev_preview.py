@@ -47,7 +47,7 @@ def _color_from_json(v: list[int]) -> QColor:
 
 
 def theme_to_dict(theme: OverlayTheme) -> dict:
-    d = {"name": theme.name, "scene": theme.scene, "font": theme.font}
+    d = {"name": theme.name, "scene": theme.scene, "font": theme.font, "frame": theme.frame}
     d.update((field, _color_to_json(getattr(theme, field))) for field in _COLOR_FIELDS)
     return d
 
@@ -57,6 +57,7 @@ def theme_from_dict(d: dict) -> OverlayTheme:
         "name": d.get("name", "dev"),
         "scene": d.get("scene", "night"),
         "font": d.get("font", "Sans"),
+        "frame": d.get("frame", "rounded"),
     }
     kwargs.update((field, _color_from_json(d[field])) for field in _COLOR_FIELDS)
     return OverlayTheme(**kwargs)

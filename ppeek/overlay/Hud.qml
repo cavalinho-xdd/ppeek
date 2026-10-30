@@ -106,33 +106,273 @@ Item {
     readonly property real footerGapX: (hitsRow.x + hitsRow.width + urRow.x) / 2
 
     // -- frame ---------------------------------------------------------------
+    // each skin tribute gets its own panel look (OverlayTheme.frame):
+    //  rounded: plain card (color palettes)
+    //  sketch:  FOOL MOON NIGHT — square, hand-inked edges that "boil"
+    //           (redrawn from a few jittered takes, like hand animation)
+    //  painted: FREEDOM DiVE REiMAGINED — watercolor nebula, no hard edge
+    //  archive: Arona & Plana — Blue Archive card with a cut corner
+    //  minimal: clearBlack — hard-edged hairline box
 
-    // offset second outline — sketchy double-line look (ink sky only)
-    Rectangle {
-        anchors.fill: parent
-        anchors.leftMargin: 3
-        anchors.topMargin: 3
-        anchors.rightMargin: -3
-        anchors.bottomMargin: -3
-        visible: hud.night
-        color: "transparent"
-        border.color: hud.inkDim
-        border.width: 1
-        radius: 10
-        rotation: 0.4
-        opacity: 0.45
+    readonly property string frame: hub.frame
+    readonly property bool sketch: frame === "sketch"
+
+    // which jittered take of the hand-drawn lines is showing
+    property int boil: 0
+    Timer {
+        interval: 170
+        repeat: true
+        running: hud.sketch && hud.animated && hud.visible
+        onTriggered: hud.boil = (hud.boil + 1) % 3
     }
 
-    Rectangle {
+    // wobbly hand-drawn helpers for sketch Canvas items; `take` picks the
+    // jitter so every boil frame is a different but stable drawing
+    function inkLine(ctx, x0, y0, x1, y1, take, amp) {
+        var len = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0))
+        var ux = (x1 - x0) / len, uy = (y1 - y0) / len
+        var seed = x0 * 3.1 + y0 * 7.7 + x1 * 1.3 + y1 * 5.9 + take * 101
+        // strokes overshoot their ends a little, like a quick pen
+        var o0 = 2 + rnd(seed) * 5, o1 = 2 + rnd(seed + 1) * 5
+        var sx = x0 - ux * o0, sy = y0 - uy * o0
+        var n = Math.max(2, Math.round((len + o0 + o1) / 14))
+        ctx.beginPath()
+        ctx.moveTo(sx, sy)
+        for (var i = 1; i <= n; i++) {
+            var f = i / n
+            var d = (rnd(seed + i * 2.3) - 0.5) * 2 * amp
+            ctx.lineTo(sx + ux * (len + o0 + o1) * f - uy * d,
+                       sy + uy * (len + o0 + o1) * f + ux * d)
+        }
+        ctx.stroke()
+    }
+
+    function inkCircle(ctx, cx, cy, r, take, amp) {
+        var seed = cx * 1.7 + cy * 3.3 + r * 9.1 + take * 37
+        var n = Math.max(10, Math.round(r * 1.4))
+        var start = rnd(seed) * Math.PI * 2
+        ctx.beginPath()
+        // a little past a full turn, so the pen's start and end overlap
+        for (var i = 0; i <= n + 2; i++) {
+            var a = start + i / n * Math.PI * 2
+            var rr = r + (rnd(seed + i * 1.9) - 0.5) * 2 * amp
+            var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+    }
+
+    Item {
         id: panel
         anchors.fill: parent
-        radius: 10
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: hub.bgTop }
-            GradientStop { position: 1.0; color: hub.bgBottom }
+
+        // rounded card (color palettes)
+        Rectangle {
+            anchors.fill: parent
+            visible: hud.frame === "rounded"
+            radius: 10
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: hub.bgTop }
+                GradientStop { position: 1.0; color: hub.bgBottom }
+            }
+            border.color: Qt.alpha(hud.ink, 0.28)
+            border.width: 1
         }
-        border.color: Qt.alpha(hud.ink, 0.28)
-        border.width: 1
+
+        // hairline box (clearBlack)
+        Rectangle {
+            anchors.fill: parent
+            visible: hud.frame === "minimal"
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: hub.bgTop }
+                GradientStop { position: 1.0; color: hub.bgBottom }
+            }
+            border.color: Qt.alpha(hud.ink, 0.22)
+            border.width: 1
+        }
+
+        // FOOL MOON NIGHT: ink on black, grainy, scratchy edges
+        Canvas {
+            id: sketchFrame
+            anchors.fill: parent
+            visible: hud.sketch
+            onVisibleChanged: if (visible) requestPaint()
+            Component.onCompleted: requestPaint()
+            Connections {
+                target: hud
+                function onBoilChanged() { if (sketchFrame.visible) sketchFrame.requestPaint() }
+            }
+            Connections { target: hub; function onThemeChanged() { sketchFrame.requestPaint() } }
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                var ink = hud.ink
+                function inkA(a) { return Qt.rgba(ink.r, ink.g, ink.b, a) }
+                var w = width, h = height, m = 4
+
+                var g = ctx.createLinearGradient(0, 0, 0, h)
+                g.addColorStop(0, hub.bgTop)
+                g.addColorStop(1, hub.bgBottom)
+                ctx.fillStyle = g
+                ctx.fillRect(m - 1, m - 1, w - 2 * m + 2, h - 2 * m + 2)
+
+                // paper grain + a few chalky scratches (fixed, they don't boil)
+                for (var i = 0; i < 260; i++) {
+                    ctx.fillStyle = inkA(0.03 + hud.rnd(i + 0.31) * 0.09)
+                    ctx.fillRect(m + hud.rnd(i + 0.11) * (w - 2 * m),
+                                 m + hud.rnd(i + 0.21) * (h - 2 * m), 1, 1)
+                }
+                ctx.lineWidth = 0.7
+                var scratches = [[16, 118, 34, 112], [252, 132, 270, 127], [232, 16, 247, 9], [9, 60, 13, 47]]
+                for (var k = 0; k < scratches.length; k++) {
+                    var sc = scratches[k]
+                    ctx.strokeStyle = inkA(0.12)
+                    hud.inkLine(ctx, sc[0], sc[1], sc[2], sc[3], 0, 0.6)
+                }
+
+                // the edges: a heavy pass and a lighter second pass, each wobbling
+                var t = hud.boil
+                var edges = [[m, m, w - m, m], [w - m, m, w - m, h - m],
+                             [w - m, h - m, m, h - m], [m, h - m, m, m]]
+                ctx.lineCap = "round"
+                ctx.lineJoin = "round"
+                for (var e = 0; e < edges.length; e++) {
+                    var ed = edges[e]
+                    ctx.strokeStyle = inkA(0.9)
+                    ctx.lineWidth = 1.5
+                    hud.inkLine(ctx, ed[0], ed[1], ed[2], ed[3], t, 0.9)
+                    ctx.strokeStyle = inkA(0.4)
+                    ctx.lineWidth = 0.8
+                    hud.inkLine(ctx, ed[0] + 1.5, ed[1] + 1.2, ed[2] + 1.5, ed[3] + 1.2, t + 7, 1.3)
+                }
+            }
+        }
+
+        // FREEDOM DiVE REiMAGINED: watercolor nebula fading out at the edges
+        Canvas {
+            id: paintedFrame
+            anchors.fill: parent
+            visible: hud.frame === "painted"
+            onVisibleChanged: if (visible) requestPaint()
+            Component.onCompleted: requestPaint()
+            Connections { target: hub; function onThemeChanged() { paintedFrame.requestPaint() } }
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                var w = width, h = height
+
+                ctx.fillStyle = hub.bgBottom
+                ctx.fillRect(0, 0, w, h)
+
+                // soft overlapping washes: deep blue, teal, a touch of violet
+                function wash(cx, cy, r, rgb, a) {
+                    var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+                    g.addColorStop(0, Qt.rgba(rgb[0], rgb[1], rgb[2], a))
+                    g.addColorStop(1, Qt.rgba(rgb[0], rgb[1], rgb[2], 0))
+                    ctx.fillStyle = g
+                    ctx.fillRect(0, 0, w, h)
+                }
+                wash(w * 0.72, h * 0.25, 150, [0.16, 0.32, 0.66], 0.75)
+                wash(w * 0.18, h * 0.85, 120, [0.10, 0.36, 0.55], 0.55)
+                wash(w * 0.45, h * 0.05, 90, [0.36, 0.30, 0.70], 0.35)
+                wash(w * 0.95, h * 0.95, 80, [0.08, 0.20, 0.45], 0.5)
+                // brushy blotches give the wash a painted grain
+                for (var i = 0; i < 70; i++) {
+                    var bx = hud.rnd(i + 0.13) * w, by = hud.rnd(i + 0.27) * h
+                    var br = 4 + hud.rnd(i + 0.41) * 16
+                    var light = hud.rnd(i + 0.55) > 0.5
+                    wash(bx, by, br, light ? [0.55, 0.75, 1.0] : [0.02, 0.04, 0.14],
+                         0.05 + hud.rnd(i + 0.69) * 0.07)
+                }
+                // far bokeh stars, the deepest layer
+                for (var j = 0; j < 26; j++) {
+                    var sx = hud.rnd(j + 3.1) * w, sy = hud.rnd(j + 3.3) * h
+                    var sr = 0.4 + hud.rnd(j + 3.7) * 1.1
+                    ctx.fillStyle = Qt.rgba(0.85, 0.92, 1.0, 0.25 + hud.rnd(j + 3.9) * 0.4)
+                    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 2 * Math.PI); ctx.fill()
+                }
+
+                // feather all four edges to transparent: no hard border
+                ctx.globalCompositeOperation = "destination-out"
+                var f = 14
+                function fade(x0, y0, x1, y1, rx, ry, rw, rh) {
+                    var g = ctx.createLinearGradient(x0, y0, x1, y1)
+                    g.addColorStop(0, "rgba(0,0,0,1)")
+                    g.addColorStop(1, "rgba(0,0,0,0)")
+                    ctx.fillStyle = g
+                    ctx.fillRect(rx, ry, rw, rh)
+                }
+                fade(0, 0, 0, f, 0, 0, w, f)
+                fade(0, h, 0, h - f, 0, h - f, w, f)
+                fade(0, 0, f, 0, 0, 0, f, h)
+                fade(w, 0, w - f, 0, w - f, 0, f, h)
+                ctx.globalCompositeOperation = "source-over"
+            }
+        }
+
+        // Arona & Plana: Blue Archive UI card — cut top-right corner with
+        // accent bars along the cut and a bright tab on the top edge
+        Canvas {
+            id: archiveFrame
+            anchors.fill: parent
+            visible: hud.frame === "archive"
+            onVisibleChanged: if (visible) requestPaint()
+            Component.onCompleted: requestPaint()
+            Connections { target: hub; function onThemeChanged() { archiveFrame.requestPaint() } }
+            readonly property real cut: 24
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                var w = width - 1, h = height - 1, c = cut
+                var ac = hud.accent
+
+                ctx.beginPath()
+                ctx.moveTo(0.5, 0.5)
+                ctx.lineTo(w - c, 0.5)
+                ctx.lineTo(w, c)
+                ctx.lineTo(w, h)
+                ctx.lineTo(0.5, h)
+                ctx.closePath()
+                var g = ctx.createLinearGradient(0, 0, 0, h)
+                g.addColorStop(0, hub.bgTop)
+                g.addColorStop(1, hub.bgBottom)
+                ctx.fillStyle = g
+                ctx.fill()
+                ctx.strokeStyle = Qt.rgba(ac.r, ac.g, ac.b, 0.45)
+                ctx.lineWidth = 1
+                ctx.stroke()
+
+                // accent bars echoing the cut, stepping inward
+                for (var i = 0; i < 3; i++) {
+                    var d = 6 + i * 6
+                    ctx.strokeStyle = Qt.rgba(ac.r, ac.g, ac.b, 0.7 - i * 0.2)
+                    ctx.lineWidth = 2.5 - i * 0.6
+                    ctx.beginPath()
+                    ctx.moveTo(w - c - d + 4, 3)
+                    ctx.lineTo(w - 3, c + d - 4)
+                    ctx.stroke()
+                }
+
+                // the tab: a slanted bright strip on the top edge
+                ctx.fillStyle = Qt.rgba(ac.r, ac.g, ac.b, 0.9)
+                ctx.beginPath()
+                ctx.moveTo(14, 0.5)
+                ctx.lineTo(72, 0.5)
+                ctx.lineTo(69, 3.5)
+                ctx.lineTo(11, 3.5)
+                ctx.closePath()
+                ctx.fill()
+                // and a small slanted marker on the bottom edge
+                ctx.fillStyle = Qt.rgba(ac.r, ac.g, ac.b, 0.55)
+                ctx.beginPath()
+                ctx.moveTo(w - 46, h)
+                ctx.lineTo(w - 14, h)
+                ctx.lineTo(w - 17, h - 3)
+                ctx.lineTo(w - 43, h - 3)
+                ctx.closePath()
+                ctx.fill()
+            }
+        }
 
         Item {
             id: scenery
@@ -189,6 +429,10 @@ Item {
                 onVisibleChanged: if (visible) requestPaint()
                 Component.onCompleted: requestPaint()
                 Connections { target: hub; function onThemeChanged() { nightScene.requestPaint() } }
+                Connections {
+                    target: hud
+                    function onBoilChanged() { if (nightScene.visible && hud.sketch) nightScene.requestPaint() }
+                }
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
@@ -205,7 +449,18 @@ Item {
                         var ks = [1.55, 1.75, 1.95]
                         for (var j = 0; j < ks.length; j++) {
                             ctx.beginPath()
-                            ctx.arc(0, 0, r * ks[j], a0, a1)
+                            if (hud.sketch) {
+                                // hand-drawn rings: radius drifts along the stroke
+                                var n = 16
+                                for (var q = 0; q <= n; q++) {
+                                    var a = a0 + (a1 - a0) * q / n
+                                    var rr = r * ks[j] + (hud.rnd(j * 31 + q * 1.7 + hud.boil * 53) - 0.5) * 1.6
+                                    if (q === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr)
+                                    else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr)
+                                }
+                            } else {
+                                ctx.arc(0, 0, r * ks[j], a0, a1)
+                            }
                             ctx.stroke()
                         }
                         ctx.restore()
@@ -233,9 +488,13 @@ Item {
                         ctx.restore()
                         ctx.strokeStyle = inkA(alpha)
                         ctx.lineWidth = 1.3
-                        ctx.beginPath()
-                        ctx.arc(cx, cy, r, 0, 2 * Math.PI)
-                        ctx.stroke()
+                        if (hud.sketch) {
+                            hud.inkCircle(ctx, cx, cy, r, hud.boil, 0.6)
+                        } else {
+                            ctx.beginPath()
+                            ctx.arc(cx, cy, r, 0, 2 * Math.PI)
+                            ctx.stroke()
+                        }
                         if (ringed)  // near half, in front of the body
                             ringHalf(cx, cy, r, alpha, 0, Math.PI)
                     }
@@ -253,9 +512,13 @@ Item {
                         ctx.globalCompositeOperation = "source-over"
                         ctx.strokeStyle = inkA(alpha)
                         ctx.lineWidth = 1
-                        ctx.beginPath()
-                        ctx.arc(cx, cy, r, 0, 2 * Math.PI)
-                        ctx.stroke()
+                        if (hud.sketch) {
+                            hud.inkCircle(ctx, cx, cy, r, hud.boil, 0.5)
+                        } else {
+                            ctx.beginPath()
+                            ctx.arc(cx, cy, r, 0, 2 * Math.PI)
+                            ctx.stroke()
+                        }
                         ctx.restore()
                     }
 
@@ -348,7 +611,6 @@ Item {
                         ctx.globalAlpha = 1
                     }
 
-                    stripes(width - 2, 2, -45)
                     stripes(2, height - 2, 135)
                     dotGrid(214, 38)
 
@@ -521,14 +783,24 @@ Item {
                         ctx.beginPath(); ctx.moveTo(sk.x - ds, sk.y + ds); ctx.lineTo(sk.x + ds, sk.y - ds); ctx.stroke()
                     }
 
-                    // blob planets with rainbow rings and little faces
-                    function blobPlanet(cx, cy, r, seed) {
+                    // cloud planets: soft fluffy bodies with a glow, ringed by a
+                    // brush-stroke rainbow; `depth` 0..1 pushes one back into the
+                    // haze (fainter glow, bluer, flatter), like the skin's art
+                    function blobPlanet(cx, cy, r, seed, depth) {
                         ctx.save()
                         ctx.translate(cx, cy)
-                        var pulse = Math.sin(t * 1.5 + seed) * 0.06
+                        var pulse = Math.sin(t * 1.5 + seed) * 0.05
                         var wobble = Math.sin(t * 0.8 + seed * 1.7) * 0.07
                         ctx.rotate(wobble)
                         ctx.scale(1 + pulse, 1 - pulse)
+                        var near = 1 - depth
+
+                        // glow halo
+                        var halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 2.4)
+                        halo.addColorStop(0, Qt.rgba(1.0, 0.93, 0.95, 0.38 * near))
+                        halo.addColorStop(1, Qt.rgba(1.0, 0.93, 0.95, 0))
+                        ctx.fillStyle = halo
+                        ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, 2 * Math.PI); ctx.fill()
 
                         var grad = ctx.createLinearGradient(-r * 2.2, 0, r * 2.2, 0)
                         grad.addColorStop(0.0, "rgb(255,100,60)")
@@ -540,29 +812,50 @@ Item {
 
                         var ringAng = (15 + t * 25 * (seed % 2 === 0 ? 1 : -1)) * Math.PI / 180
 
-                        // ring back half
-                        ctx.save()
-                        ctx.rotate(ringAng)
-                        ctx.scale(1, 0.26)
-                        ctx.strokeStyle = grad
-                        ctx.lineWidth = r * 0.3
-                        ctx.beginPath()
-                        ctx.arc(0, 0, r * 1.9, Math.PI, 2 * Math.PI)
-                        ctx.stroke()
-                        ctx.restore()
+                        // brush-stroke ring half: white rim, rainbow body, sheen
+                        function ringHalf(a0, a1) {
+                            ctx.save()
+                            ctx.rotate(ringAng)
+                            ctx.scale(1, 0.3)
+                            ctx.lineCap = "round"
+                            ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.85 * near + 0.1)
+                            ctx.lineWidth = r * 0.55 + 2.5
+                            ctx.beginPath(); ctx.arc(0, 0, r * 1.85, a0, a1); ctx.stroke()
+                            ctx.strokeStyle = grad
+                            ctx.lineWidth = r * 0.55
+                            ctx.beginPath(); ctx.arc(0, 0, r * 1.85, a0, a1); ctx.stroke()
+                            ctx.strokeStyle = "rgba(255,255,255,0.45)"
+                            ctx.lineWidth = Math.max(0.8, r * 0.1)
+                            ctx.beginPath(); ctx.arc(0, 0, r * 1.72, a0, a1); ctx.stroke()
+                            ctx.restore()
+                        }
+                        ringHalf(Math.PI, 2 * Math.PI)
 
-                        // warm cream body with blush
-                        var bodyGrad = ctx.createLinearGradient(-r, -r, r, r)
-                        bodyGrad.addColorStop(0.0, "rgba(255,250,240,0.96)")
-                        bodyGrad.addColorStop(0.5, "rgba(255,245,235,0.98)")
-                        bodyGrad.addColorStop(1.0, "rgba(255,230,220,0.92)")
+                        // fluffy rim: soft cream dabs breaking up the outline
+                        for (var fi = 0; fi < 26; fi++) {
+                            var fa = fi / 26 * Math.PI * 2 + seed
+                            var fr = r * (0.88 + hud.rnd(seed * 17 + fi * 1.3) * 0.18)
+                            var fx = Math.cos(fa) * fr, fy = Math.sin(fa) * fr
+                            var fs = r * (0.22 + hud.rnd(seed * 23 + fi * 2.1) * 0.14)
+                            var dab = ctx.createRadialGradient(fx, fy, 0, fx, fy, fs)
+                            dab.addColorStop(0, "rgba(255,244,240,0.7)")
+                            dab.addColorStop(1, "rgba(255,244,240,0)")
+                            ctx.fillStyle = dab
+                            ctx.beginPath(); ctx.arc(fx, fy, fs, 0, 2 * Math.PI); ctx.fill()
+                        }
+
+                        // body: lit from the top-left, peachy pink toward the edge
+                        var bodyGrad = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r)
+                        bodyGrad.addColorStop(0.0, "rgba(255,255,252,1)")
+                        bodyGrad.addColorStop(0.6, "rgba(255,240,238,0.98)")
+                        bodyGrad.addColorStop(1.0, "rgba(246,196,204,0.95)")
                         ctx.fillStyle = bodyGrad
-                        ctx.beginPath()
-                        ctx.arc(0, 0, r, 0, 2 * Math.PI)
-                        ctx.fill()
-                        ctx.strokeStyle = "rgba(200,190,180,0.3)"
-                        ctx.lineWidth = 1
-                        ctx.stroke()
+                        ctx.beginPath(); ctx.arc(0, 0, r * 0.94, 0, 2 * Math.PI); ctx.fill()
+
+                        // blush
+                        ctx.fillStyle = "rgba(245,140,160,0.35)"
+                        ctx.beginPath(); ctx.ellipse(-r * 0.62, r * 0.08, r * 0.36, r * 0.2); ctx.fill()
+                        ctx.beginPath(); ctx.ellipse(r * 0.26, r * 0.08, r * 0.36, r * 0.2); ctx.fill()
 
                         // face
                         ctx.strokeStyle = "rgb(40,40,60)"
@@ -606,23 +899,21 @@ Item {
                             ctx.beginPath(); ctx.arc(0, r * 0.2, r * 0.1, 0, 2 * Math.PI); ctx.stroke()
                         }
 
-                        // ring front half
-                        ctx.save()
-                        ctx.rotate(ringAng)
-                        ctx.scale(1, 0.26)
-                        ctx.strokeStyle = grad
-                        ctx.lineWidth = r * 0.3
-                        ctx.beginPath()
-                        ctx.arc(0, 0, r * 1.9, 0, Math.PI)
-                        ctx.stroke()
-                        ctx.restore()
+                        ringHalf(0, Math.PI)
+
+                        // atmospheric haze over distant planets
+                        if (depth > 0) {
+                            ctx.fillStyle = Qt.rgba(0.12, 0.22, 0.5, 0.5 * depth)
+                            ctx.beginPath(); ctx.arc(0, 0, r * 1.02, 0, 2 * Math.PI); ctx.fill()
+                        }
 
                         ctx.restore()
                     }
 
-                    blobPlanet(206, 26, 12, 0)
-                    blobPlanet(171, 12, 5, 1)
-                    blobPlanet(4, 97, 5, 2)
+                    // far to near, so the big one paints over the haze
+                    blobPlanet(16, 97, 4, 2, 0.7)
+                    blobPlanet(171, 12, 5.5, 1, 0.45)
+                    blobPlanet(204, 27, 15, 0, 0)
                 }
             }
 
@@ -763,7 +1054,7 @@ Item {
                 }
             }
 
-            // sketchbook corner brackets, every scene
+            // sketchbook corner brackets, on the hard-edged frames
             Repeater {
                 model: [
                     { cx: 6,  cy: 6,  dx: 1,  dy: 1 },
@@ -773,6 +1064,7 @@ Item {
                 ]
                 Item {
                     x: modelData.cx; y: modelData.cy
+                    visible: hud.frame === "rounded" || hud.frame === "minimal" || hud.sketch
                     opacity: 0.4
                     Rectangle { x: modelData.dx > 0 ? 0 : -8; y: 0; width: 8; height: 1; color: hud.ink }
                     Rectangle { x: 0; y: modelData.dy > 0 ? 0 : -8; width: 1; height: 8; color: hud.ink }
@@ -822,13 +1114,44 @@ Item {
                 y: 9
                 width: 38; height: 38
                 readonly property color tint: hud.gradeColors[hub.grade] || hud.ink
+                // circle on most frames, a square on clearBlack's hard box, a
+                // Blue Archive diamond on Arona,
+                // a hand-inked boiling ring on FOOL MOON NIGHT
                 Rectangle {
                     anchors.fill: parent
-                    radius: width / 2
+                    visible: !hud.sketch
+                    radius: hud.frame === "minimal" ? 3 : hud.frame === "archive" ? 5 : width / 2
+                    rotation: hud.frame === "archive" ? 45 : 0
+                    scale: hud.frame === "archive" ? 0.78 : 1
                     color: Qt.alpha(gradeBadge.tint, 0.12)
                     border.color: gradeBadge.tint
                     border.width: 1.5
                     Behavior on border.color { ColorAnimation { duration: 350 } }
+                }
+                Canvas {
+                    id: inkRing
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    visible: hud.sketch
+                    property color tint: gradeBadge.tint
+                    onTintChanged: requestPaint()
+                    onVisibleChanged: if (visible) requestPaint()
+                    Component.onCompleted: requestPaint()
+                    Connections {
+                        target: hud
+                        function onBoilChanged() { if (inkRing.visible) inkRing.requestPaint() }
+                    }
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.clearRect(0, 0, width, height)
+                        ctx.lineCap = "round"
+                        ctx.strokeStyle = tint
+                        ctx.lineWidth = 1.5
+                        hud.inkCircle(ctx, width / 2, height / 2, width / 2 - 4, hud.boil, 0.9)
+                        ctx.strokeStyle = Qt.alpha(tint, 0.45)
+                        ctx.lineWidth = 0.8
+                        hud.inkCircle(ctx, width / 2 + 1, height / 2 + 0.5, width / 2 - 4.5, hud.boil + 5, 1.2)
+                    }
                 }
                 Text {
                     id: gradeText
