@@ -26,7 +26,19 @@ ANCHOR_PRESETS = {
 }
 
 _ERR_RANGE_MS = 110.0
-_ERR_BANDS = [(16.0, "#46b4ff"), (64.0, "#78dc5a"), (97.0, "#f0c846")]
+
+# 100 / 50 judgement hues, pulled a quarter of the way toward each theme's
+# ink so they sit in every palette instead of shouting over it
+_HIT100_BASE = QColor(150, 215, 120)
+_HIT50_BASE = QColor(235, 190, 90)
+
+
+def _blend(base: QColor, toward: QColor, t: float = 0.25) -> QColor:
+    return QColor(
+        round(base.red() + (toward.red() - base.red()) * t),
+        round(base.green() + (toward.green() - base.green()) * t),
+        round(base.blue() + (toward.blue() - base.blue()) * t),
+    )
 
 
 class HubState(QObject):
@@ -37,8 +49,9 @@ class HubState(QObject):
     layoutChanged = pyqtSignal()
     themeChanged = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, animated: bool = True):
         super().__init__()
+        self._animated = animated  # False for offscreen previews
         self._frame = TelemetryFrame()
         self._theme = DEFAULT_THEME
         self._skin_theme = DEFAULT_THEME       # what the active skin resolves to
@@ -46,7 +59,7 @@ class HubState(QObject):
         self._connected = False
         self._ur = 0.0
         self._kps = 0.0
-        self._ticks: list[dict] = []  # {"pos": -1..1, "color": str, "born": float}
+        self._ticks: list[dict] = []  # {"pos": -1..1, "born": float}
         self._anchor = ANCHOR_PRESETS["bottom-right"]
         self._margin_x = 24
         self._margin_y = 24
@@ -78,13 +91,8 @@ class HubState(QObject):
             prev = len(frame.hit_errors)
         now = time.monotonic()
         for err in frame.hit_errors[prev:]:
-            color = "#eb5a5a"
-            for width, band_color in _ERR_BANDS:
-                if abs(err) <= width:
-                    color = band_color
-                    break
             pos = max(-1.0, min(1.0, err / _ERR_RANGE_MS))
-            self._ticks.append({"pos": pos, "color": color, "born": now})
+            self._ticks.append({"pos": pos, "born": now})
         self._ticks = self._ticks[-48:]
 
         self._frame = frame
@@ -134,6 +142,10 @@ class HubState(QObject):
         self.ticksChanged.emit()  # re-emit so QML updates fade opacity
 
     # -- QML-facing properties -------------------------------------------
+
+    @pyqtProperty(bool, constant=True)
+    def animated(self) -> bool:
+        return self._animated
 
     @pyqtProperty(bool, notify=frameChanged)
     def connected(self) -> bool:
@@ -190,7 +202,7 @@ class HubState(QObject):
     def errorTicks(self) -> list:
         now = time.monotonic()
         return [
-            {"pos": t["pos"], "color": t["color"], "age": min(1.0, (now - t["born"]) / 6.0)}
+            {"pos": t["pos"], "age": min(1.0, (now - t["born"]) / 6.0)}
             for t in self._ticks
         ]
 
@@ -241,6 +253,22 @@ class HubState(QObject):
         return _hex(c)
 
     @pyqtProperty(str, notify=themeChanged)
+    def bgTop(self) -> str:
+        return _hex(self._theme.bg_top)
+
+    @pyqtProperty(str, notify=themeChanged)
+    def bgBottom(self) -> str:
+        return _hex(self._theme.bg_bottom)
+
+    @pyqtProperty(str, notify=themeChanged)
+    def hit100Color(self) -> str:
+        return _hex(_blend(_HIT100_BASE, self._theme.ink))
+
+    @pyqtProperty(str, notify=themeChanged)
+    def hit50Color(self) -> str:
+        return _hex(_blend(_HIT50_BASE, self._theme.ink))
+
+    @pyqtProperty(str, notify=themeChanged)
     def accent(self) -> str:
         return _hex(self._theme.accent)
 
@@ -255,22 +283,3 @@ class HubState(QObject):
     @pyqtProperty(str, notify=themeChanged)
     def themeFont(self) -> str:
         return self._theme.font
-
-    @pyqtProperty(str, constant=True)
-    def fontPath(self) -> str:
-        return self._font_uri("Gaegu-Regular.ttf")
-
-    @pyqtProperty(str, constant=True)
-    def pastelFontPath(self) -> str:
-        return self._font_uri("Quicksand-VariableFont.ttf")
-
-    @pyqtProperty(str, constant=True)
-    def freedomFontPath(self) -> str:
-        return self._font_uri("Fredoka-VariableFont.ttf")
-
-    @staticmethod
-    def _font_uri(filename: str) -> str:
-        from pathlib import Path
-
-        font = Path(__file__).parent.parent / "assets" / "fonts" / filename
-        return font.as_uri() if font.exists() else ""

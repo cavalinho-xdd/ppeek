@@ -2,7 +2,8 @@
 
 Runs as a dedicated process so QT_WAYLAND_SHELL_INTEGRATION=layer-shell only
 affects the HUD window (layer-shell integration is process-global in Qt).
-Falls back to the legacy QWidget overlay when layer-shell is unavailable.
+Both hosts run the same Hud.qml: Overlay.qml on the wlr-layer-shell overlay
+layer, PlainOverlay.qml (frameless always-on-top window) everywhere else.
 """
 from __future__ import annotations
 
@@ -22,6 +23,31 @@ def layer_shell_available() -> bool:
         os.environ.get("XDG_SESSION_TYPE", "") == "wayland"
         or os.environ.get("WAYLAND_DISPLAY")
     ) and _LAYER_SHELL_PLUGIN.exists()
+
+
+def place_window(window, anchor_name: str, margin_x: int, margin_y: int) -> None:
+    """Move a plain (non-layer-shell) overlay window to its screen corner."""
+    from PyQt6.QtGui import QGuiApplication
+
+    screen = window.screen() or QGuiApplication.primaryScreen()
+    if screen is None:
+        return
+    geom = screen.availableGeometry()
+    w, h = window.width(), window.height()
+
+    if "left" in anchor_name:
+        x = geom.left() + margin_x
+    elif "right" in anchor_name:
+        x = geom.right() - w - margin_x
+    else:
+        x = geom.center().x() - w // 2
+
+    if "top" in anchor_name:
+        y = geom.top() + margin_y
+    else:
+        y = geom.bottom() - h - margin_y
+
+    window.setPosition(int(x), int(y))
 
 
 def run_overlay() -> None:
@@ -45,13 +71,21 @@ def run_overlay() -> None:
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
 
+    from ppeek.overlay.theme import ensure_theme_fonts
+
+    ensure_theme_fonts()
+
     settings = QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "ppeek", "ppeek")
 
     from ppeek.overlay.bridge import HubState
 
     hub = HubState()
 
-    window = None
+    from PyQt6.QtQml import QQmlApplicationEngine
+
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("hub", hub)
+    window = None  # the plain host's window; layer-shell positions itself
 
     def read_layout() -> None:
         settings.sync()
@@ -69,26 +103,20 @@ def run_overlay() -> None:
         hub.apply_layout(anchor_name=anchor, margin_x=mx, margin_y=my, auto_hide=ah)
         hub.apply_theme_override(override)
         if window is not None:
-            window.apply_layout(anchor_name=anchor, margin_x=mx, margin_y=my, auto_hide=ah)
-            window.apply_theme_override(override)
+            place_window(window, anchor, mx, my)
 
     read_layout()
     if use_layer_shell:
-        from PyQt6.QtQml import QQmlApplicationEngine
-
-        engine = QQmlApplicationEngine()
-        engine.rootContext().setContextProperty("hub", hub)
-        qml = Path(__file__).with_name("Overlay.qml")
-        engine.load(str(qml))
+        engine.load(str(Path(__file__).with_name("Overlay.qml")))
         if not engine.rootObjects():
-            logger.error("QML overlay failed to load, falling back to widget")
+            logger.error("layer-shell overlay failed to load, falling back to a plain window")
             use_layer_shell = False
     if not use_layer_shell:
-        from ppeek.overlay.window import OverlayWindow
-
-        window = OverlayWindow(auto_hide=settings.value("overlay/auto_hide", True, type=bool))
+        engine.load(str(Path(__file__).with_name("PlainOverlay.qml")))
+        if not engine.rootObjects():
+            raise RuntimeError("overlay QML failed to load")
+        window = engine.rootObjects()[0]
         read_layout()
-        window.show()
 
     # -- data feeds ------------------------------------------------------
 
@@ -135,13 +163,9 @@ def run_overlay() -> None:
         # it on the /precise endpoint instead (PreciseListener below)
         record_key_total(frame.key_total)
         hub.on_telemetry_frame(frame)
-        if window is not None:
-            window.on_telemetry_frame(frame)
 
     def on_disconnect() -> None:
         hub.on_telemetry_disconnect()
-        if window is not None:
-            window.on_telemetry_disconnect()
 
     telemetry = TelemetryListener(on_frame=on_frame, on_disconnect=on_disconnect)
     # no evdev (Windows): pull press counters from tosu's precise endpoint
@@ -180,8 +204,6 @@ def run_overlay() -> None:
         tracker = tracker_holder["tracker"]
         kps = tracker.keys_per_second() if tracker else keyoverlay_kps()
         hub.on_kps(kps)
-        if window is not None:
-            window.on_kps(kps)
 
     kps_timer = QTimer()
     kps_timer.setInterval(250)
