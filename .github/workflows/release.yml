@@ -24,12 +24,12 @@ jobs:
         run: >
           pyinstaller --noconfirm --onedir --windowed --name PPeek
           --icon packaging/ppeek.ico
-          --add-data "ppeek/overlay/Overlay.qml;ppeek/overlay"
+          --add-data "ppeek/overlay/*.qml;ppeek/overlay"
           --add-data "ppeek/assets;ppeek/assets"
           --add-data "packaging/ppeek.svg;packaging"
           --hidden-import PyQt6.QtSvg
-          --exclude-module PyQt6.QtQml
-          --exclude-module PyQt6.QtQuick
+          --hidden-import PyQt6.QtQml
+          --hidden-import PyQt6.QtQuick
           main.py
 
       - name: Smoke test

@@ -1,18 +1,18 @@
-"""Skin showcase tab: live-rendered overlay previews as clickable cards.
+"""Themes page: rendered HUD previews as clickable cards.
 
 Two sections: osu! skin tributes (download link + apply) and color
 palettes (gruvbox, everforest, nord, tokyo-night, catppuccin, ayu —
-apply only). Each card renders the actual OverlayWindow offscreen with
+apply only). Each card renders the overlay's own Hud.qml offscreen with
 staged demo telemetry (via overlay.preview), so previews always match
 the shipped theme code. Previews render lazily on first show to keep
-app startup cheap.
+app startup cheap. The grid reflows to however many cards fit the width.
 
 Apply writes settings key ``overlay/theme_override``; the overlay
 process watches the settings file and swaps its theme live. Empty value
-means automatic skin-name matching (the Auto button).
+means automatic skin-name matching (the "Follow my skin" toggle).
 
-Cards are custom-painted by design (dark, skin-art backdrop) — the rest
-of the settings window stays native-themed.
+Cards are custom-painted on the theme's own backdrop; their chrome uses
+the settings window palette (confighub.window).
 """
 from __future__ import annotations
 
@@ -50,7 +50,6 @@ class SkinEntry:
     author: str       # empty for palettes; card then shows "color palette"
     skin_name: str    # fed through skin-name theme resolution ("" for palettes)
     url: str | None   # skin download page; None for palettes
-    anim_t: float     # frozen animation-clock phase for the preview
     theme_name: str   # key into THEMES_BY_NAME; drives apply + preview
 
 
@@ -60,7 +59,6 @@ SKIN_CATALOG: list[SkinEntry] = [
         author="Spoo",
         skin_name="FOOL MOON NIGHT",
         url="https://skins.osuck.net/skins/2931",
-        anim_t=3.7,
         theme_name="full-moon-night",
     ),
     SkinEntry(
@@ -68,7 +66,6 @@ SKIN_CATALOG: list[SkinEntry] = [
         author="Kitazaki Hinata",
         skin_name="hk7205 - Arona & Plana",
         url="https://skins.osuck.net/skins/4434",
-        anim_t=2.4,
         theme_name="arona-plana",
     ),
     SkinEntry(
@@ -76,7 +73,6 @@ SKIN_CATALOG: list[SkinEntry] = [
         author="Spoo",
         skin_name="FREEDOM DiVE REiMAGINED",
         url="https://skins.osuck.net/skins/4062",
-        anim_t=5.1,
         theme_name="freedom-dive",
     ),
     SkinEntry(
@@ -84,25 +80,33 @@ SKIN_CATALOG: list[SkinEntry] = [
         author="FakeCarpetGrass",
         skin_name="- # clearBlack",
         url="https://skins.osuck.net/skins/308",
-        anim_t=1.9,
         theme_name="clear-black",
     ),
 ]
 
 PALETTE_CATALOG: list[SkinEntry] = [
-    SkinEntry("Gruvbox", "", "", None, 1.2, "gruvbox"),
-    SkinEntry("Everforest", "", "", None, 2.9, "everforest"),
-    SkinEntry("Nord", "", "", None, 4.4, "nord"),
-    SkinEntry("Tokyo Night", "", "", None, 0.6, "tokyo-night"),
-    SkinEntry("Catppuccin", "", "", None, 3.3, "catppuccin"),
-    SkinEntry("Ayu", "", "", None, 5.8, "ayu"),
+    SkinEntry("Gruvbox", "", "", None, "gruvbox"),
+    SkinEntry("Everforest", "", "", None, "everforest"),
+    SkinEntry("Nord", "", "", None, "nord"),
+    SkinEntry("Tokyo Night", "", "", None, "tokyo-night"),
+    SkinEntry("Catppuccin", "", "", None, "catppuccin"),
+    SkinEntry("Ayu", "", "", None, "ayu"),
 ]
 
 _CARD_W = 320
-_PREVIEW_H = 180
+_PREVIEW_H = 172
 _FOOTER_H = 54
 _RADIUS = 12.0
-_MARGIN = 12  # breathing room around the preview inside its zone
+_MARGIN = 10  # breathing room around the preview inside its zone
+_GAP = 16
+
+# chrome colors, matching confighub.window's palette
+_FOOTER = QColor("#1a1d28")
+_FOOTER_HOVER = QColor("#222636")
+_BORDER = QColor("#2a2e3e")
+_TEXT = QColor("#e6e8f0")
+_TEXT_DIM = QColor("#8d93a8")
+_CHIP = QColor("#2a2e3e")
 
 
 def _opaque(c: QColor) -> QColor:
@@ -200,13 +204,13 @@ class SkinCard(QWidget):
 
         # footer strip
         footer = QRectF(0, _PREVIEW_H, self.width(), _FOOTER_H)
-        p.fillRect(footer, QColor(20, 20, 28) if not self._hover else QColor(28, 28, 40))
+        p.fillRect(footer, _FOOTER_HOVER if self._hover else _FOOTER)
 
         title_font = QFont(self.font())
         title_font.setPointSizeF(10.5)
         title_font.setBold(True)
         p.setFont(title_font)
-        p.setPen(QColor(235, 235, 242))
+        p.setPen(_TEXT)
         text_rect = footer.adjusted(14, 8, -14, -26)
         title = p.fontMetrics().elidedText(
             self.entry.title, Qt.TextElideMode.ElideRight, int(text_rect.width()))
@@ -215,7 +219,7 @@ class SkinCard(QWidget):
         meta_font = QFont(self.font())
         meta_font.setPointSizeF(8.5)
         p.setFont(meta_font)
-        p.setPen(QColor(150, 150, 165))
+        p.setPen(_TEXT_DIM)
         meta = "by " + self.entry.author if self.entry.author else "color palette"
         meta_rect = footer.adjusted(14, 28, -14, -6)
         p.drawText(meta_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, meta)
@@ -232,9 +236,9 @@ class SkinCard(QWidget):
         self._apply_rect = QRectF(right - aw, chip_y, aw, chip_h)
         hot = self._hover_chip == "apply" or self._applied
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(accent if hot else QColor(50, 50, 64))
+        p.setBrush(accent if hot else _CHIP)
         p.drawRoundedRect(self._apply_rect, chip_h / 2, chip_h / 2)
-        p.setPen(QColor(12, 12, 18) if hot else QColor(210, 210, 220))
+        p.setPen(QColor(12, 12, 18) if hot else _TEXT)
         p.drawText(self._apply_rect, Qt.AlignmentFlag.AlignCenter, apply_text)
         right -= aw + 8
 
@@ -242,17 +246,17 @@ class SkinCard(QWidget):
             url_text = "page ↗"
             uw = fm.horizontalAdvance(url_text) + 16
             self._url_rect = QRectF(right - uw, chip_y, uw, chip_h)
-            p.setPen(QPen(accent if self._hover_chip == "url" else QColor(70, 70, 88), 1.0))
+            p.setPen(QPen(accent if self._hover_chip == "url" else _BORDER, 1.0))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRoundedRect(self._url_rect, chip_h / 2, chip_h / 2)
-            p.setPen(accent if self._hover_chip == "url" else QColor(170, 170, 185))
+            p.setPen(accent if self._hover_chip == "url" else _TEXT_DIM)
             p.drawText(self._url_rect, Qt.AlignmentFlag.AlignCenter, url_text)
         else:
             self._url_rect = QRectF()
 
         # border: accent when applied or hovered, subtle otherwise
         p.setClipping(False)
-        border = accent if (self._hover or self._applied) else QColor(60, 60, 75)
+        border = accent if (self._hover or self._applied) else _BORDER
         p.setPen(QPen(border, 1.5 if (self._hover or self._applied) else 1.0))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(outer, _RADIUS, _RADIUS)
@@ -260,78 +264,101 @@ class SkinCard(QWidget):
 
 
 class SkinShowcase(QScrollArea):
-    """Grid of theme cards; overlay previews render on first show."""
+    """Reflowing grid of theme cards; overlay previews render on first show."""
 
-    def __init__(self, settings: QSettings, parent: QWidget | None = None):
+    def __init__(self, settings: QSettings, on_applied=None, parent: QWidget | None = None):
         super().__init__(parent)
         self._settings = settings
+        self._on_applied = on_applied
         self.setWidgetResizable(True)
         self.setFrameShape(QScrollArea.Shape.NoFrame)
 
         container = QWidget()
         outer = QVBoxLayout(container)
-        outer.setContentsMargins(16, 16, 16, 16)
+        outer.setContentsMargins(0, 0, 0, 16)
         outer.setSpacing(10)
 
-        header = QHBoxLayout()
-        header.addWidget(QLabel("Overlay theme — apply one, or let it follow your skin:"))
-        header.addStretch(1)
-        self._auto_btn = QPushButton("Auto (match my skin)")
+        self._auto_btn = QPushButton("Follow my skin")
+        self._auto_btn.setCheckable(True)
+        self._auto_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._auto_btn.setToolTip("Pick the theme from the osu! skin you're playing with")
         self._auto_btn.clicked.connect(lambda: self._apply(None))
+        header = QHBoxLayout()
         header.addWidget(self._auto_btn)
+        header.addStretch(1)
         outer.addLayout(header)
+        outer.addSpacing(8)
 
         self._cards: list[SkinCard] = []
+        self._grids: list[tuple[QGridLayout, list[SkinCard]]] = []
         outer.addLayout(self._section("osu! skin tributes", SKIN_CATALOG))
-        outer.addSpacing(6)
+        outer.addSpacing(10)
         outer.addLayout(self._section("Color palettes", PALETTE_CATALOG))
         outer.addStretch(1)
         self.setWidget(container)
 
+        self._columns = 0
         self._rendered = False
         self._refresh_applied()
 
     def _section(self, label: str, entries: list[SkinEntry]) -> QVBoxLayout:
         box = QVBoxLayout()
-        box.setSpacing(8)
-        head = QLabel(label)
-        font = head.font()
-        font.setBold(True)
-        head.setFont(font)
+        box.setSpacing(10)
+        head = QLabel(label.upper())
+        head.setProperty("role", "section")
         box.addWidget(head)
         grid = QGridLayout()
-        grid.setSpacing(16)
-        for i, entry in enumerate(entries):
-            card = SkinCard(entry, self._apply)
-            self._cards.append(card)
-            grid.addWidget(card, i // 2, i % 2, Qt.AlignmentFlag.AlignTop)
+        grid.setSpacing(_GAP)
+        grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        cards = [SkinCard(entry, self._apply) for entry in entries]
+        self._cards.extend(cards)
+        self._grids.append((grid, cards))
         box.addLayout(grid)
         return box
+
+    def _reflow(self) -> None:
+        avail = self.viewport().width()
+        columns = max(1, (avail + _GAP) // (_CARD_W + _GAP))
+        if columns == self._columns:
+            return
+        self._columns = columns
+        for grid, cards in self._grids:
+            for card in cards:
+                grid.removeWidget(card)
+            for i, card in enumerate(cards):
+                grid.addWidget(card, i // columns, i % columns)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._reflow()
 
     def _apply(self, entry: SkinEntry | None) -> None:
         self._settings.setValue(OVERRIDE_KEY, entry.theme_name if entry else "")
         self._settings.sync()
         self._refresh_applied()
+        if self._on_applied is not None:
+            self._on_applied()
 
     def _refresh_applied(self) -> None:
         current = str(self._settings.value(OVERRIDE_KEY, ""))
         for card in self._cards:
             card.set_applied(bool(current) and card.entry.theme_name == current)
-        self._auto_btn.setEnabled(bool(current))
+        self._auto_btn.setChecked(not current)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self._reflow()
         if not self._rendered:
             self._rendered = True
             self._render_previews()
 
     def _render_previews(self) -> None:
-        # imported here so the main process only pays for the overlay
-        # machinery once the Skins tab is actually opened
+        # imported here so the main process only pays for QtQuick once the
+        # Themes page is actually opened
         from ppeek.overlay.preview import render_theme_preview
 
         for card in self._cards:
             entry = card.entry
             theme = None if entry.skin_name else THEMES_BY_NAME[entry.theme_name]
-            img = render_theme_preview(entry.skin_name, entry.anim_t, theme=theme)
+            img = render_theme_preview(entry.skin_name, theme=theme)
             card.set_preview(QPixmap.fromImage(img))

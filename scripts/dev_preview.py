@@ -7,13 +7,11 @@ to iterate against) or scripts/render_screenshots.py (one-shot offscreen
 PNG, no live reload).
 
 Usage:
-    python scripts/dev_preview.py                # widget renderer
-    python scripts/dev_preview.py --qml          # QML/layer-shell renderer
-    python scripts/dev_preview.py --both         # both, side by side
+    python scripts/dev_preview.py
     python scripts/dev_preview.py --theme mine.json
 
 Edit the theme JSON (default scripts/dev-theme.json, scaffolded from the
-built-in default theme on first run) and save -- the window(s) update
+built-in default theme on first run) and save -- the window updates
 within about a second. The theme isn't tied to any skin name; it previews
 independently of skin-name matching, which is exactly what authoring a new
 theme needs before it's wired to a skin.
@@ -34,7 +32,7 @@ from ppeek.overlay.preview import DEMO_FRAME
 from ppeek.overlay.theme import DEFAULT_THEME, OverlayTheme
 
 DEFAULT_THEME_PATH = Path(__file__).resolve().parent / "dev-theme.json"
-QML_PATH = Path(__file__).resolve().parent.parent / "ppeek" / "overlay" / "Overlay.qml"
+QML_PATH = Path(__file__).resolve().parent.parent / "ppeek" / "overlay" / "PlainOverlay.qml"
 
 _COLOR_FIELDS = ("ink", "body_fill", "miss", "bg_top", "bg_bottom", "accent", "deco_red")
 
@@ -81,35 +79,17 @@ def _stage_demo(on_frame) -> None:
     on_frame(dataclasses.replace(DEMO_FRAME, skin=""))
 
 
-def run_widget(theme_path: Path, x: int = 80, y: int = 80):
-    from ppeek.overlay.window import OverlayWindow
-
-    win = OverlayWindow(auto_hide=False)
-    _stage_demo(win.on_telemetry_frame)
-    win._theme = load_theme(theme_path)
-    win.move(x, y)
-    win.show()
-
-    def reload() -> None:
-        try:
-            win._theme = load_theme(theme_path)
-        except (json.JSONDecodeError, KeyError, OSError) as exc:
-            print(f"widget: theme reload failed: {exc}")
-            return
-        win.update()
-        print("widget: theme reloaded")
-
-    return win, reload
-
-
-def run_qml(theme_path: Path, x: int = 480, y: int = 80):
+def run_qml(theme_path: Path, x: int = 80, y: int = 80):
     from PyQt6.QtQml import QQmlApplicationEngine
 
     from ppeek.overlay.bridge import HubState
+    from ppeek.overlay.theme import ensure_theme_fonts
 
+    ensure_theme_fonts()
     hub = HubState()
     hub.apply_layout(anchor_name="bottom-right", margin_x=24, margin_y=24, auto_hide=False)
     _stage_demo(hub.on_telemetry_frame)
+    hub.on_kps(14.0)
     hub._theme = load_theme(theme_path)
     hub.themeChanged.emit()
 
@@ -117,24 +97,17 @@ def run_qml(theme_path: Path, x: int = 480, y: int = 80):
     engine.rootContext().setContextProperty("hub", hub)
     engine.load(str(QML_PATH))
     if not engine.rootObjects():
-        print("qml: Overlay.qml failed to load (layer-shell-qt plugin missing?) -- skipping --qml")
-        return None, None
-
-    root = engine.rootObjects()[0]
-    # best-effort: under a real wlr-layer-shell compositor the window is
-    # positioned by anchor/margin, not x/y, so this only takes effect when
-    # the layer-shell plugin is absent and QML falls back to a plain window
-    root.setProperty("x", x)
-    root.setProperty("y", y)
+        raise SystemExit("PlainOverlay.qml failed to load")
+    engine.rootObjects()[0].setPosition(x, y)
 
     def reload() -> None:
         try:
             hub._theme = load_theme(theme_path)
         except (json.JSONDecodeError, KeyError, OSError) as exc:
-            print(f"qml: theme reload failed: {exc}")
+            print(f"theme reload failed: {exc}")
             return
         hub.themeChanged.emit()
-        print("qml: theme reloaded")
+        print("theme reloaded")
 
     return (engine, hub), reload
 
@@ -142,45 +115,20 @@ def run_qml(theme_path: Path, x: int = 480, y: int = 80):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--theme", type=Path, default=DEFAULT_THEME_PATH)
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--widget", action="store_true", help="QPainter widget renderer only (default)")
-    mode.add_argument("--qml", action="store_true", help="QML/layer-shell renderer only")
-    mode.add_argument("--both", action="store_true", help="both renderers, side by side")
     args = parser.parse_args()
 
     ensure_scaffold(args.theme)
 
     from PyQt6.QtCore import QFileSystemWatcher
-    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QGuiApplication
 
-    app = QApplication(sys.argv)
-
-    want_widget = args.both or not args.qml
-    want_qml = args.both or args.qml
-
-    kept_alive = []
-    reloaders = []
-
-    if want_widget:
-        win, reload_widget = run_widget(args.theme)
-        kept_alive.append(win)
-        reloaders.append(reload_widget)
-
-    if want_qml:
-        qml_objs, reload_qml = run_qml(args.theme)
-        if qml_objs is not None:
-            kept_alive.append(qml_objs)
-            reloaders.append(reload_qml)
-
-    if not reloaders:
-        print("nothing to preview (QML failed to load and --widget wasn't requested)")
-        sys.exit(1)
+    app = QGuiApplication(sys.argv)
+    kept_alive, reload = run_qml(args.theme)
 
     watcher = QFileSystemWatcher([str(args.theme)])
 
     def on_changed(_path: str) -> None:
-        for reload_fn in reloaders:
-            reload_fn()
+        reload()
         # editors often replace-on-save rather than write-in-place;
         # re-arm the watch if that dropped it
         if str(args.theme) not in watcher.files() and args.theme.exists():

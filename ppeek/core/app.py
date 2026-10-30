@@ -341,6 +341,7 @@ def run() -> None:
         last_status = status
         tray.setIcon(status_icons[status])
         tray.setToolTip(status_tooltips[status])
+        settings_win.set_status(status)
 
     def on_tray_activated(reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.Trigger:

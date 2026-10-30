@@ -24,7 +24,7 @@
 ## ✨ Features
 
 - **Live PP**, combo, accuracy, grade and hit counts — streamed from [tosu](https://tosu.app) over its local WebSocket, no osu! plugins needed
-- **Hit-error meter** with fading tick marks and 300/100/50 windows, plus **UR (unstable rate)** readout
+- **Hit-error meter** with fading tick marks colored by judgement and tinted 300/100/50 windows, plus **UR (unstable rate)** readout
 - **KPS counter** — evdev on Linux, tosu keyOverlay counters on Windows
 - **Click-through & focus-free** — the overlay never steals input from the game
 - **Auto-hide**: appears when a beatmap starts, disappears after it ends
@@ -44,7 +44,7 @@ The overlay reads the **active skin name from osu!lazer** (via tosu) and switche
 
 Everything is painted procedurally — no image assets, just code. Adding a theme for your skin is a single palette entry in [`ppeek/overlay/theme.py`](ppeek/overlay/theme.py).
 
-**Prefer picking by hand?** The Settings → Skins tab shows live previews of every theme — the four skin tributes plus six classic color palettes (**Gruvbox, Everforest, Nord, Tokyo Night, Catppuccin, Ayu**) — with an *apply* button on each card. Applying overrides the skin matching until you switch back to *Auto (match my skin)*; the running overlay swaps live.
+**Prefer picking by hand?** The Settings → **Themes** page shows previews of every theme — the four skin tributes plus six classic color palettes (**Gruvbox, Everforest, Nord, Tokyo Night, Catppuccin, Ayu**) — with an *apply* button on each card. Applying overrides the skin matching until you switch back to *Follow my skin*; the running overlay swaps live.
 
 ## 🚀 Getting started
 
@@ -77,7 +77,7 @@ osu!lazer ──▶ tosu ──▶ WebSocket (localhost:24050) ──▶ telemet
                                                           │
      evdev (Linux) / keyOverlay ──▶ KPS + UR fallback ────┤
                                                           ▼
-                                       Qt overlay (layer-shell / widget)
+                                       Qt Quick HUD (layer-shell / window)
                                                  theme ⇆ active skin
 ```
 
@@ -93,7 +93,7 @@ osu!lazer ──▶ tosu ──▶ WebSocket (localhost:24050) ──▶ telemet
 
 ## 🙏 Credits
 
-The overlay themes are original, procedurally painted tributes — colors are sampled from each skin's `skin.ini` or matched by eye, and **no skin assets are copied or redistributed**. The skins remain the work and property of their authors — go grab them (the in-app **Skins** tab shows live previews and links straight to these pages):
+The overlay themes are original, procedurally painted tributes — colors are sampled from each skin's `skin.ini` or matched by eye, and **no skin assets are copied or redistributed**. The skins remain the work and property of their authors — go grab them (the in-app **Themes** page shows live previews and links straight to these pages):
 
 | Skin | Author | Download |
 |---|---|---|
