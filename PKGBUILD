@@ -1,6 +1,6 @@
 # Maintainer: dzejkop <jakub.muzik07@gmail.com>
 pkgname=ppeek
-pkgver=0.5.2
+pkgver=0.6.0
 pkgrel=1
 pkgdesc="osu!lazer overlay: live PP, hit-error/UR meter, KPS"
 arch=('any')
